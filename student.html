@@ -426,8 +426,17 @@
     function initUrlParams() {
       const params = new URLSearchParams(window.location.search);
       const urlRoom = params.get('room');
+      const savedRoom = localStorage.getItem('wonder_room_code');
+      const savedName = localStorage.getItem('wonder_student_name');
+
       if (urlRoom) {
         document.getElementById('pinInput').value = urlRoom;
+      } else if (savedRoom) {
+        document.getElementById('pinInput').value = savedRoom;
+      }
+
+      if (savedName) {
+        document.getElementById('nameInput').value = savedName;
       }
     }
 
@@ -442,9 +451,13 @@
       roomCode = pin;
       studentName = name;
 
+      // 브라우저에 저장 (튕겼을 때 즉시 복구)
+      localStorage.setItem('wonder_room_code', roomCode);
+      localStorage.setItem('wonder_student_name', studentName);
+
       // MQTT 연결
       mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
-        clientId: 'wonder_stu_' + studentId,
+        clientId: 'wonder_stu_' + Math.random().toString(16).substr(2, 8),
         clean: true,
         reconnectPeriod: 2000
       });
@@ -453,7 +466,6 @@
         console.log('Student connected to MQTT');
         mqttClient.subscribe(`wonder/${roomCode}/state`);
         mqttClient.publish(`wonder/${roomCode}/join`, JSON.stringify({
-          studentId: studentId,
           name: studentName
         }), { qos: 1 });
 
@@ -474,12 +486,13 @@
     }
 
     function handleTeacherState(state) {
+      // 내 이름으로 점수 매칭 (튕겼다가 다시 들어와도 누적 점수 유지!)
       if (state.scores) {
-        const me = state.scores.find(s => s.id === studentId);
+        const me = state.scores.find(s => s.name === studentName);
         if (me) {
           myScore = me.score;
-          document.getElementById('myScoreText').innerText = myScore;
-          document.getElementById('resScore').innerText = `${myScore}점`;
+          document.getElementById('myScoreText').innerText = `${myScore} / 20`;
+          document.getElementById('resScore').innerText = `${myScore} / 20점`;
         }
       }
 
@@ -500,7 +513,7 @@
           }
         }
 
-        document.getElementById('qNumText').innerText = `Q ${String(state.question.id).padStart(2, '0')}`;
+        document.getElementById('qNumText').innerText = `Q ${String(state.question.id).padStart(2, '0')} / 20`;
         document.getElementById('studentTimer').innerText = state.timerRemaining;
         document.getElementById('qPromptText').innerText = state.question.question;
 
@@ -519,7 +532,7 @@
           icon.innerText = '🎉';
           title.innerText = '정답입니다!';
           title.style.color = '#4ade80';
-          sub.innerText = '멋져요! 점수를 획득했습니다.';
+          sub.innerText = '멋져요! +1점을 획득했습니다. (+1점)';
         } else {
           icon.innerText = '😢';
           title.innerText = '아쉬워요!';
@@ -546,7 +559,7 @@
 
       if (mqttClient && mqttClient.connected) {
         mqttClient.publish(`wonder/${roomCode}/submit`, JSON.stringify({
-          studentId: studentId,
+          name: studentName,
           qIndex: currentQIdx,
           choice: choice
         }), { qos: 1 });

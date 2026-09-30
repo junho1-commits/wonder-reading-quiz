@@ -665,6 +665,166 @@
     .podium-2 .podium-block { height: 130px; background: linear-gradient(180deg, #e2e8f0, #94a3b8); }
     .podium-3 { order: 3; }
     .podium-3 .podium-block { height: 100px; background: linear-gradient(180deg, #fdba74, #ea580c); }
+
+    /* 성적표 시트 모달 */
+    .sheet-modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+    }
+
+    .sheet-modal {
+      background: #111827;
+      border: 2px solid var(--accent-blue);
+      border-radius: 24px;
+      width: 95vw;
+      max-width: 1400px;
+      height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+      overflow: hidden;
+    }
+
+    .sheet-modal-header {
+      padding: 20px 32px;
+      background: #1e293b;
+      border-bottom: 2px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .sheet-modal-title {
+      font-size: 26px;
+      font-weight: 900;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sheet-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .sheet-btn {
+      font-size: 18px;
+      font-weight: 800;
+      padding: 10px 20px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-sheet-copy {
+      background: #10b981;
+      color: #000;
+    }
+
+    .btn-sheet-csv {
+      background: #3b82f6;
+      color: #ffffff;
+    }
+
+    .btn-sheet-close {
+      background: #334155;
+      color: #cbd5e1;
+    }
+
+    .sheet-modal-body {
+      flex: 1;
+      overflow: auto;
+      padding: 24px 32px;
+    }
+
+    .sheet-summary-bar {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+
+    .summary-card {
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .summary-card-val {
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--accent-yellow);
+    }
+
+    .sheet-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 18px;
+      text-align: center;
+      background: #161e2e;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .sheet-table th, .sheet-table td {
+      padding: 12px 8px;
+      border: 1px solid #2e3b52;
+    }
+
+    .sheet-table th {
+      background: #1e293b;
+      color: #94a3b8;
+      font-weight: 900;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .sheet-table th.col-name {
+      text-align: left;
+      padding-left: 16px;
+      min-width: 120px;
+    }
+
+    .sheet-table td.col-name {
+      text-align: left;
+      padding-left: 16px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .sheet-table tr:hover td {
+      background: rgba(56, 189, 248, 0.08);
+    }
+
+    .score-chip {
+      font-weight: 900;
+      color: var(--accent-yellow);
+      font-size: 20px;
+    }
+
+    .cell-o { color: #4ade80; font-weight: 900; font-size: 20px; }
+    .cell-x { color: #f87171; font-weight: 900; font-size: 20px; }
+    .cell-empty { color: #475569; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -691,6 +851,9 @@
     </div>
 
     <div class="header-right">
+      <button class="icon-btn" onclick="openSheetModal()" style="background: #1e3a8a; border-color: #3b82f6; color: #ffffff;">
+        📊 성적표 / 시트
+      </button>
       <button class="icon-btn" id="soundToggleBtn" onclick="toggleSound()">
         <span id="soundIcon">🔊</span> 효과음 켜짐
       </button>
@@ -840,6 +1003,62 @@
     </div>
   </main>
 
+  <!-- 학생 성적표 (시트) 모달 -->
+  <div class="sheet-modal-backdrop" id="sheetModalBackdrop">
+    <div class="sheet-modal">
+      <div class="sheet-modal-header">
+        <div class="sheet-modal-title">
+          <span>📊</span>
+          <span>소설 《원더》 독서 골든벨 학생 성적표 (실시간 시트)</span>
+        </div>
+        <div class="sheet-actions">
+          <button class="sheet-btn btn-sheet-copy" onclick="copySheetToClipboard()">
+            📋 시트 복사 (구글시트/한글 붙여넣기용)
+          </button>
+          <button class="sheet-btn btn-sheet-csv" onclick="downloadSheetCSV()">
+            💾 엑셀(CSV) 다운로드
+          </button>
+          <button class="sheet-btn btn-sheet-close" onclick="closeSheetModal()">
+            닫기 ✕
+          </button>
+        </div>
+      </div>
+
+      <div class="sheet-modal-body">
+        <div class="sheet-summary-bar">
+          <div class="summary-card">
+            <span>참여 학생:</span>
+            <span class="summary-card-val" id="summaryStudentCount">0명</span>
+          </div>
+          <div class="summary-card">
+            <span>반 평균 점수:</span>
+            <span class="summary-card-val" id="summaryAvgScore">0 / 20점</span>
+          </div>
+          <div class="summary-card">
+            <span>진행 상황:</span>
+            <span class="summary-card-val" id="summaryProgress">0 / 20문제</span>
+          </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="sheet-table" id="scoreSheetTable">
+            <thead>
+              <tr id="sheetHeaderRow">
+                <th style="width: 60px;">순위</th>
+                <th class="col-name">학생 이름</th>
+                <th style="width: 120px;">총점 (20점)</th>
+                <!-- Q1 ~ Q20 헤더 동적 생성 -->
+              </tr>
+            </thead>
+            <tbody id="sheetTableBody">
+              <!-- 학생별 점수 행 동적 생성 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     /* ================= Web Audio API 오디오 엔진 ================= */
     let audioCtx = null;
@@ -889,8 +1108,8 @@
       timerTotal: 30,
       timerRemaining: 30,
       timerActive: false,
-      students: {}, // id -> { id, name, score, streak }
-      currentAnswers: {}, // id -> choice
+      students: {}, // name -> { name, score, streak, answers: { 0: true/false } }
+      currentAnswers: {}, // name -> choice
       choiceCounts: { 1: 0, 2: 0, 3: 0, 4: 0 }
     };
 
@@ -919,6 +1138,7 @@
       try {
         const res = await fetch('questions.json');
         questions = await res.json();
+        setupSheetHeaders();
       } catch (e) {
         console.error('Failed to load questions.json', e);
       }
@@ -961,24 +1181,36 @@
       }, 1000);
     }
 
+    /* 학생 입장 처리 (튕겼을 때 같은 이름으로 들어오면 기존 점수 및 기록 유지!) */
     function handleStudentJoin(data) {
-      if (!gameState.students[data.studentId]) {
-        gameState.students[data.studentId] = {
-          id: data.studentId,
-          name: data.name || '학생',
+      const studentName = (data.name || '').trim();
+      if (!studentName) return;
+
+      if (!gameState.students[studentName]) {
+        // 최초 등록
+        gameState.students[studentName] = {
+          name: studentName,
           score: 0,
-          streak: 0
+          streak: 0,
+          answers: {} // { 0: { choice: 3, isCorrect: true } }
         };
-        broadcastState();
-        updateUI();
+      } else {
+        // 튕겼다가 재접속한 경우: 기존 score와 answers는 그대로 보존됨!
+        console.log(`[재접속 확인] ${studentName} 학생 재입장 - 누적 점수 ${gameState.students[studentName].score}점 유지`);
       }
+
+      broadcastState();
+      updateUI();
     }
 
     function handleStudentSubmit(data) {
       if (gameState.status !== 'question') return;
       if (data.qIndex !== gameState.currentQIndex) return;
 
-      gameState.currentAnswers[data.studentId] = data.choice;
+      const studentName = (data.name || '').trim();
+      if (!studentName) return;
+
+      gameState.currentAnswers[studentName] = data.choice;
       
       // 집계 업데이트
       gameState.choiceCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
@@ -1012,7 +1244,7 @@
           explanation: (gameState.status === 'answer') ? currentQ.explanation : null,
           totalQuestions: questions.length
         } : null,
-        scores: Object.values(gameState.students).map(s => ({ id: s.id, name: s.name, score: s.score }))
+        scores: Object.values(gameState.students).map(s => ({ name: s.name, score: s.score }))
       };
 
       mqttClient.publish(`wonder/${ROOM_CODE}/state`, JSON.stringify(payload), { qos: 1 });
@@ -1213,21 +1445,169 @@
       gameState.status = 'answer';
       gameState.timerActive = false;
 
-      // 채점
+      // 1문제당 1점 채점 & 문제별 정오답 기록
       const correct = questions[gameState.currentQIndex].answer;
-      Object.entries(gameState.currentAnswers).forEach(([sid, choice]) => {
-        if (gameState.students[sid]) {
-          if (choice === correct) {
-            gameState.students[sid].score += 100;
-            gameState.students[sid].streak++;
+      Object.entries(gameState.currentAnswers).forEach(([studentName, choice]) => {
+        if (gameState.students[studentName]) {
+          const isCorrect = (choice === correct);
+          // 문제별 결과 저장
+          gameState.students[studentName].answers[gameState.currentQIndex] = {
+            choice: choice,
+            isCorrect: isCorrect
+          };
+
+          if (isCorrect) {
+            gameState.students[studentName].score += 1; // 1문제당 1점!
+            gameState.students[studentName].streak++;
           } else {
-            gameState.students[sid].streak = 0;
+            gameState.students[studentName].streak = 0;
           }
         }
       });
 
       broadcastState();
       updateUI();
+      renderSheetTable();
+    }
+
+    /* ================= 실시간 성적표 (시트) 로직 ================= */
+    function setupSheetHeaders() {
+      const headerRow = document.getElementById('sheetHeaderRow');
+      // 기존 Q 컬럼이 있다면 제거 후 다시 생성
+      while (headerRow.children.length > 3) {
+        headerRow.removeChild(headerRow.lastChild);
+      }
+      for (let i = 1; i <= questions.length; i++) {
+        const th = document.createElement('th');
+        th.style.width = '45px';
+        th.innerText = `Q${i}`;
+        headerRow.appendChild(th);
+      }
+    }
+
+    function openSheetModal() {
+      renderSheetTable();
+      document.getElementById('sheetModalBackdrop').style.display = 'flex';
+    }
+
+    function closeSheetModal() {
+      document.getElementById('sheetModalBackdrop').style.display = 'none';
+    }
+
+    function renderSheetTable() {
+      const students = Object.values(gameState.students);
+      const studentCount = students.length;
+      document.getElementById('summaryStudentCount').innerText = `${studentCount}명`;
+
+      // 반 평균 점수 계산 (20점 만점)
+      const totalScore = students.reduce((acc, s) => acc + s.score, 0);
+      const avg = studentCount > 0 ? (totalScore / studentCount).toFixed(1) : 0;
+      document.getElementById('summaryAvgScore').innerText = `${avg} / 20점`;
+      document.getElementById('summaryProgress').innerText = `${gameState.currentQIndex + (gameState.status === 'answer' ? 1 : 0)} / ${questions.length}문제`;
+
+      // 점수 높은 순으로 정렬
+      const sorted = [...students].sort((a, b) => b.score - a.score);
+
+      const tbody = document.getElementById('sheetTableBody');
+      tbody.innerHTML = '';
+
+      if (sorted.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="${3 + questions.length}" style="padding: 30px; color: #64748b;">아직 접속한 학생이 없습니다.</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
+
+      sorted.forEach((s, idx) => {
+        const tr = document.createElement('tr');
+        let html = `
+          <td style="font-weight: 800; color: #94a3b8;">${idx + 1}</td>
+          <td class="col-name">${s.name}</td>
+          <td><span class="score-chip">${s.score}</span> / 20</td>
+        `;
+
+        for (let qIdx = 0; qIdx < questions.length; qIdx++) {
+          const ans = s.answers[qIdx];
+          if (ans === undefined) {
+            html += `<td class="cell-empty">-</td>`;
+          } else if (ans.isCorrect) {
+            html += `<td class="cell-o">O</td>`;
+          } else {
+            html += `<td class="cell-x">X</td>`;
+          }
+        }
+
+        tr.innerHTML = html;
+        tbody.appendChild(tr);
+      });
+    }
+
+    /* 클립보드 복사 (구글 스프레드시트 / 한글 / 엑셀에 바로 Ctrl+V) */
+    function copySheetToClipboard() {
+      const students = Object.values(gameState.students).sort((a, b) => b.score - a.score);
+      if (students.length === 0) {
+        alert('복사할 학생 데이터가 없습니다.');
+        return;
+      }
+
+      // TSV (탭 구분 텍스트) 생성
+      let tsv = '순위\t학생이름\t총점(20점만점)';
+      for (let i = 1; i <= questions.length; i++) {
+        tsv += `\tQ${i}`;
+      }
+      tsv += '\n';
+
+      students.forEach((s, idx) => {
+        tsv += `${idx + 1}\t${s.name}\t${s.score}`;
+        for (let qIdx = 0; qIdx < questions.length; qIdx++) {
+          const ans = s.answers[qIdx];
+          const val = (ans === undefined) ? '-' : (ans.isCorrect ? 'O' : 'X');
+          tsv += `\t${val}`;
+        }
+        tsv += '\n';
+      });
+
+      navigator.clipboard.writeText(tsv).then(() => {
+        alert('📋 성적표가 클립보드에 복사되었습니다!\n\n구글 스프레드시트나 엑셀, 한글 표에 [Ctrl + V] 하시면 즉시 표로 붙여넣어집니다.');
+      }).catch(err => {
+        alert('클립보드 복사에 실패했습니다.');
+      });
+    }
+
+    /* UTF-8 BOM CSV 파일 다운로드 */
+    function downloadSheetCSV() {
+      const students = Object.values(gameState.students).sort((a, b) => b.score - a.score);
+      if (students.length === 0) {
+        alert('저장할 학생 데이터가 없습니다.');
+        return;
+      }
+
+      let csv = '순위,학생이름,총점(20점)';
+      for (let i = 1; i <= questions.length; i++) {
+        csv += `,Q${i}`;
+      }
+      csv += '\r\n';
+
+      students.forEach((s, idx) => {
+        csv += `${idx + 1},"${s.name}",${s.score}`;
+        for (let qIdx = 0; qIdx < questions.length; qIdx++) {
+          const ans = s.answers[qIdx];
+          const val = (ans === undefined) ? '-' : (ans.isCorrect ? 'O' : 'X');
+          csv += `,${val}`;
+        }
+        csv += '\r\n';
+      });
+
+      // UTF-8 BOM (\uFEFF) 추가하여 엑셀에서 한글 깨짐 방지
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `원더_독서골든벨_학생성적표_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
 
     function nextQuestion() {
