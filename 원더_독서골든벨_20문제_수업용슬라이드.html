@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>소설 《원더》 독서 골든벨 20문제 - 전자칠판 수업 슬라이드</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --accent-yellow: #facc15;
+      --accent-blue: #38bdf8;
+      --accent-green: #4ade80;
+      --accent-red: #f87171;
+      --text-white: #ffffff;
+      --text-gray: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'SUIT Variable', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Malgun Gothic", sans-serif;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-white);
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 상단 헤더 */
+    header {
+      height: 70px;
+      background: #111827;
+      border-bottom: 2px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .book-tag {
+      background: var(--accent-yellow);
+      color: #000;
+      font-size: 18px;
+      font-weight: 900;
+      padding: 4px 14px;
+      border-radius: 20px;
+    }
+
+    .slide-title {
+      font-size: 26px;
+      font-weight: 900;
+      color: #ffffff;
+    }
+
+    .header-center {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .stage-pill {
+      background: #1e293b;
+      border: 1px solid var(--accent-blue);
+      color: var(--accent-blue);
+      font-size: 20px;
+      font-weight: 800;
+      padding: 4px 16px;
+      border-radius: 20px;
+    }
+
+    .page-counter {
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--accent-yellow);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-header {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-header:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    /* 본문 슬라이드 영역 (화면 꽉 차는 레이아웃) */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 24px 36px;
+      height: calc(100vh - 140px);
+      gap: 20px;
+    }
+
+    /* 발문 카드 */
+    .question-card {
+      background: var(--card-bg);
+      border: 2px solid var(--card-border);
+      border-radius: 20px;
+      padding: 24px 36px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    .q-text {
+      font-size: 32px;
+      font-weight: 900;
+      line-height: 1.45;
+      color: #ffffff;
+    }
+
+    .hint-bar {
+      margin-top: 14px;
+      background: rgba(250, 204, 21, 0.1);
+      border: 2px dashed var(--accent-yellow);
+      border-radius: 12px;
+      padding: 12px 20px;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--accent-yellow);
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hint-bar.show {
+      display: flex;
+    }
+
+    /* 4개 보기 그리드 */
+    .options-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 20px;
+      min-height: 220px;
+    }
+
+    .option-item {
+      background: #1e293b;
+      border: 3px solid #334155;
+      border-radius: 18px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .option-badge {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      background: #334155;
+      color: #ffffff;
+      font-size: 26px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .option-title {
+      font-size: 25px;
+      font-weight: 800;
+      line-height: 1.35;
+      color: #ffffff;
+    }
+
+    .option-item.correct {
+      background: rgba(16, 185, 129, 0.25) !important;
+      border-color: #10b981 !important;
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.5);
+      transform: scale(1.02);
+    }
+    .option-item.correct .option-badge {
+      background: #10b981 !important;
+      color: #000;
+    }
+
+    .option-item.dimmed {
+      opacity: 0.35;
+      filter: grayscale(0.8);
+    }
+
+    /* 해설 카드 */
+    .explanation-box {
+      background: #162032;
+      border: 2px solid var(--accent-blue);
+      border-radius: 18px;
+      padding: 18px 28px;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .explanation-box.show {
+      display: block;
+    }
+
+    .exp-title {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--accent-blue);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .exp-body {
+      font-size: 22px;
+      font-weight: 700;
+      color: #e2e8f0;
+      line-height: 1.45;
+    }
+
+    /* 하단 네비게이션 */
+    footer {
+      height: 70px;
+      background: #111827;
+      border-top: 2px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      flex-shrink: 0;
+    }
+
+    .nav-btn {
+      font-size: 22px;
+      font-weight: 800;
+      padding: 10px 24px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s;
+    }
+
+    .btn-prev {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 2px solid #334155;
+    }
+    .btn-prev:hover { background: #334155; }
+
+    .btn-toggle-ans {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #000;
+      font-size: 22px;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+    }
+
+    .btn-toggle-hint {
+      background: #1e293b;
+      color: var(--accent-yellow);
+      border: 2px solid #475569;
+    }
+
+    .btn-next {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+    }
+    .btn-next:hover { transform: translateY(-2px); }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <span class="book-tag">📖 소설 《원더》</span>
+      <span class="slide-title">독서 골든벨 20문제 수업 슬라이드</span>
+    </div>
+    <div class="header-center">
+      <span class="stage-pill" id="stagePill">1단계</span>
+      <span class="page-counter" id="pageCounter">01 / 20</span>
+    </div>
+    <div class="header-right">
+      <button class="btn-header" onclick="toggleFullScreen()">⛶ 전체화면 [F]</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 문제 카드 -->
+    <div class="question-card">
+      <div class="q-text" id="qText">문제 불러오는 중...</div>
+      <div class="hint-bar" id="hintBar">
+        <span>💡 힌트:</span>
+        <span id="hintContent">힌트 내용</span>
+      </div>
+    </div>
+
+    <!-- 4개 선택지 -->
+    <div class="options-grid">
+      <div class="option-item" id="optItem1" onclick="toggleAnswer()">
+        <div class="option-badge">1</div>
+        <div class="option-title" id="optTitle1">보기 1</div>
+      </div>
+      <div class="option-item" id="optItem2" onclick="toggleAnswer()">
+        <div class="option-badge">2</div>
+        <div class="option-title" id="optTitle2">보기 2</div>
+      </div>
+      <div class="option-item" id="optItem3" onclick="toggleAnswer()">
+        <div class="option-badge">3</div>
+        <div class="option-title" id="optTitle3">보기 3</div>
+      </div>
+      <div class="option-item" id="optItem4" onclick="toggleAnswer()">
+        <div class="option-badge">4</div>
+        <div class="option-title" id="optTitle4">보기 4</div>
+      </div>
+    </div>
+
+    <!-- 책 속 해설 -->
+    <div class="explanation-box" id="expBox">
+      <div class="exp-title">📖 《원더》 책 속 이야기 & 해설</div>
+      <div class="exp-body" id="expBody">해설 내용</div>
+    </div>
+  </main>
+
+  <footer>
+    <button class="nav-btn btn-prev" onclick="prevSlide()">◀ 이전 [←]</button>
+    <div style="display: flex; gap: 14px;">
+      <button class="nav-btn btn-toggle-hint" onclick="toggleHint()">💡 힌트 열기 [H]</button>
+      <button class="nav-btn btn-toggle-ans" onclick="toggleAnswer()">✨ 정답 확인 [Space]</button>
+    </div>
+    <button class="nav-btn btn-next" onclick="nextSlide()">다음 ▶ [→]</button>
+  </footer>
+
+  <script>
+    let questions = [];
+    let currentIndex = 0;
+    let answerRevealed = false;
+    let hintRevealed = false;
+
+    async function loadQuestions() {
+      const res = await fetch('questions.json');
+      questions = await res.json();
+      renderSlide();
+    }
+
+    function renderSlide() {
+      if (questions.length === 0) return;
+      const q = questions[currentIndex];
+      answerRevealed = false;
+      hintRevealed = false;
+
+      document.getElementById('stagePill').innerText = q.stage;
+      document.getElementById('pageCounter').innerText = `${String(currentIndex + 1).padStart(2, '0')} / ${questions.length}`;
+      document.getElementById('qText').innerText = q.question;
+      document.getElementById('hintContent').innerText = q.hint;
+      document.getElementById('expBody').innerText = q.explanation;
+
+      document.getElementById('hintBar').classList.remove('show');
+      document.getElementById('expBox').classList.remove('show');
+
+      q.options.forEach((opt, idx) => {
+        const item = document.getElementById(`optItem${idx + 1}`);
+        item.classList.remove('correct', 'dimmed');
+        document.getElementById(`optTitle${idx + 1}`).innerText = opt;
+      });
+    }
+
+    function toggleHint() {
+      hintRevealed = !hintRevealed;
+      const bar = document.getElementById('hintBar');
+      if (hintRevealed) bar.classList.add('show');
+      else bar.classList.remove('show');
+    }
+
+    function toggleAnswer() {
+      answerRevealed = !answerRevealed;
+      const q = questions[currentIndex];
+      const expBox = document.getElementById('expBox');
+
+      if (answerRevealed) {
+        expBox.classList.add('show');
+        q.options.forEach((opt, idx) => {
+          const item = document.getElementById(`optItem${idx + 1}`);
+          if (idx + 1 === q.answer) {
+            item.classList.add('correct');
+            item.classList.remove('dimmed');
+          } else {
+            item.classList.remove('correct');
+            item.classList.add('dimmed');
+          }
+        });
+      } else {
+        expBox.classList.remove('show');
+        q.options.forEach((opt, idx) => {
+          const item = document.getElementById(`optItem${idx + 1}`);
+          item.classList.remove('correct', 'dimmed');
+        });
+      }
+    }
+
+    function nextSlide() {
+      if (currentIndex < questions.length - 1) {
+        currentIndex++;
+        renderSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (currentIndex > 0) {
+        currentIndex--;
+        renderSlide();
+      }
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') nextSlide();
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') prevSlide();
+      else if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        toggleAnswer();
+      } else if (e.key === 'h' || e.key === 'H' || e.key === 'ㅗ') toggleHint();
+      else if (e.key === 'f' || e.key === 'F' || e.key === 'ㄹ') toggleFullScreen();
+    });
+
+    loadQuestions();
+  </script>
+</body>
+</html>

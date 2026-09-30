@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>소설 《원더》 실시간 독서 골든벨 - 전자칠판 교사용</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet">
+  <!-- 클라우드 실시간 동기화 MQTT & 브라우저 QR 라이브러리 -->
+  <script src="https://unpkg.com/mqtt@5.3.5/dist/mqtt.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --bg-main: #0b0f19;
+      --bg-card: #161e2e;
+      --border-color: #2e3b52;
+      --text-main: #ffffff;
+      --text-muted: #94a3b8;
+      --accent-yellow: #facc15;
+      --accent-blue: #38bdf8;
+      --accent-green: #4ade80;
+      --accent-red: #f87171;
+      
+      --c1: #ef4444;
+      --c2: #3b82f6;
+      --c3: #eab308;
+      --c4: #10b981;
+
+      --c1-bg: rgba(239, 68, 68, 0.15);
+      --c2-bg: rgba(59, 130, 246, 0.15);
+      --c3-bg: rgba(234, 179, 8, 0.15);
+      --c4-bg: rgba(16, 185, 129, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'SUIT Variable', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Malgun Gothic", sans-serif;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 상단 헤더 */
+    header {
+      height: 72px;
+      background: rgba(17, 24, 39, 0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 2px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      flex-shrink: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand-icon {
+      font-size: 32px;
+    }
+
+    .brand-title {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #000;
+      font-size: 16px;
+      font-weight: 900;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    .room-badge {
+      background: rgba(56, 189, 248, 0.2);
+      border: 1px solid var(--accent-blue);
+      color: var(--accent-blue);
+      font-size: 18px;
+      font-weight: 900;
+      padding: 4px 14px;
+      border-radius: 12px;
+    }
+
+    .header-center {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .stage-badge {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: var(--accent-blue);
+      font-size: 20px;
+      font-weight: 800;
+      padding: 6px 18px;
+      border-radius: 30px;
+    }
+
+    .q-number-badge {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--accent-yellow);
+    }
+
+    .submit-counter-badge {
+      background: rgba(56, 189, 248, 0.15);
+      border: 2px solid var(--accent-blue);
+      color: #ffffff;
+      font-size: 22px;
+      font-weight: 900;
+      padding: 6px 20px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .icon-btn {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      background: #334155;
+      color: #ffffff;
+      border-color: #64748b;
+    }
+
+    /* 메인 컨테이너 */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 72px);
+      padding: 24px 32px;
+      position: relative;
+    }
+
+    /* 1. 대기실 */
+    .view-lobby {
+      flex: 1;
+      display: flex;
+      gap: 32px;
+      height: 100%;
+    }
+
+    .lobby-left {
+      flex: 4;
+      background: var(--bg-card);
+      border: 2px solid var(--border-color);
+      border-radius: 24px;
+      padding: 36px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .lobby-qr-box {
+      background: #ffffff;
+      padding: 16px;
+      border-radius: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      margin-bottom: 24px;
+    }
+
+    #qrCanvasContainer {
+      width: 240px;
+      height: 240px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lobby-url-box {
+      background: #0f172a;
+      border: 2px dashed var(--accent-yellow);
+      border-radius: 16px;
+      padding: 14px 24px;
+      margin-bottom: 24px;
+      width: 100%;
+    }
+
+    .lobby-url-label {
+      font-size: 16px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      font-weight: 700;
+    }
+
+    .lobby-pin-text {
+      font-size: 32px;
+      font-weight: 900;
+      color: var(--accent-yellow);
+      letter-spacing: 2px;
+    }
+
+    .lobby-start-btn {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff;
+      font-size: 32px;
+      font-weight: 900;
+      padding: 16px 54px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .lobby-start-btn:hover {
+      transform: scale(1.04);
+      box-shadow: 0 12px 30px rgba(16, 185, 129, 0.6);
+    }
+
+    .lobby-right {
+      flex: 6;
+      background: var(--bg-card);
+      border: 2px solid var(--border-color);
+      border-radius: 24px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .lobby-right-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    .lobby-right-title {
+      font-size: 28px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .student-count-chip {
+      background: var(--accent-blue);
+      color: #0b0f19;
+      font-size: 20px;
+      font-weight: 900;
+      padding: 4px 16px;
+      border-radius: 20px;
+    }
+
+    .student-grid {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      gap: 14px;
+      padding: 8px;
+    }
+
+    .student-pill {
+      background: #1e293b;
+      border: 2px solid #3b82f6;
+      color: #ffffff;
+      font-size: 22px;
+      font-weight: 800;
+      padding: 10px 22px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .student-pill::before {
+      content: '👤';
+      font-size: 20px;
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* 2. 퀴즈 화면 */
+    .view-quiz {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .question-card {
+      background: var(--bg-card);
+      border: 2px solid var(--border-color);
+      border-radius: 20px;
+      padding: 24px 36px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+
+    .question-title {
+      font-size: 32px;
+      font-weight: 900;
+      line-height: 1.45;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+
+    .hint-box {
+      margin-top: 14px;
+      background: rgba(250, 204, 21, 0.12);
+      border: 2px dashed var(--accent-yellow);
+      border-radius: 14px;
+      padding: 12px 20px;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--accent-yellow);
+      display: none;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .hint-box.show {
+      display: flex;
+    }
+
+    .options-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 20px;
+      min-height: 240px;
+    }
+
+    .option-card {
+      border-radius: 18px;
+      padding: 20px 28px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      border: 3px solid transparent;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .option-card.c1 { background: var(--c1-bg); border-color: var(--c1); }
+    .option-card.c2 { background: var(--c2-bg); border-color: var(--c2); }
+    .option-card.c3 { background: var(--c3-bg); border-color: var(--c3); }
+    .option-card.c4 { background: var(--c4-bg); border-color: var(--c4); }
+
+    .option-num-badge {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 900;
+      color: #ffffff;
+      flex-shrink: 0;
+    }
+
+    .c1 .option-num-badge { background: var(--c1); }
+    .c2 .option-num-badge { background: var(--c2); }
+    .c3 .option-num-badge { background: var(--c3); }
+    .c4 .option-num-badge { background: var(--c4); }
+
+    .option-text {
+      font-size: 26px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.4;
+      flex: 1;
+    }
+
+    .option-vote-bar {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      height: 12px;
+      background: rgba(255, 255, 255, 0.4);
+      width: 0%;
+      transition: width 0.6s ease;
+    }
+
+    .option-vote-count {
+      display: none;
+      position: absolute;
+      right: 24px;
+      font-size: 24px;
+      font-weight: 900;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 6px 16px;
+      border-radius: 20px;
+      color: #ffffff;
+    }
+
+    .option-card.is-correct {
+      border: 4px solid #10b981 !important;
+      background: rgba(16, 185, 129, 0.3) !important;
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.6);
+      transform: scale(1.02);
+      z-index: 10;
+    }
+
+    .option-card.is-wrong {
+      opacity: 0.4;
+      filter: grayscale(0.5);
+    }
+
+    .option-card.is-correct::after {
+      content: '✔ 정답';
+      position: absolute;
+      top: 12px;
+      right: 20px;
+      background: #10b981;
+      color: #000;
+      font-size: 18px;
+      font-weight: 900;
+      padding: 4px 14px;
+      border-radius: 12px;
+    }
+
+    .explanation-drawer {
+      background: #1e293b;
+      border: 2px solid var(--accent-blue);
+      border-radius: 18px;
+      padding: 20px 28px;
+      display: none;
+    }
+
+    .explanation-drawer.show {
+      display: block;
+    }
+
+    .explanation-header {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--accent-blue);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .explanation-content {
+      font-size: 22px;
+      font-weight: 700;
+      color: #e2e8f0;
+      line-height: 1.5;
+    }
+
+    .bottom-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .timer-track {
+      width: 100%;
+      height: 16px;
+      background: #1e293b;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #334155;
+    }
+
+    .timer-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #10b981, #facc15, #ef4444);
+      transition: width 1s linear;
+    }
+
+    .timer-fill.urgent {
+      background: #ef4444;
+      animation: pulseUrgent 0.6s infinite alternate;
+    }
+
+    @keyframes pulseUrgent {
+      from { opacity: 0.7; }
+      to { opacity: 1; }
+    }
+
+    .controls-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .timer-text-badge {
+      font-size: 26px;
+      font-weight: 900;
+      color: #ffffff;
+      background: #1e293b;
+      border: 2px solid #475569;
+      padding: 6px 20px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .timer-text-badge.urgent {
+      border-color: #ef4444;
+      color: #ef4444;
+    }
+
+    .action-btn-group {
+      display: flex;
+      gap: 14px;
+    }
+
+    .action-btn {
+      font-size: 22px;
+      font-weight: 800;
+      padding: 12px 28px;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s;
+    }
+
+    .btn-hint {
+      background: #334155;
+      color: var(--accent-yellow);
+      border: 2px solid #475569;
+    }
+    .btn-hint:hover { background: #475569; }
+
+    .btn-pause {
+      background: #334155;
+      color: #cbd5e1;
+      border: 2px solid #475569;
+    }
+
+    .btn-reveal {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #000000;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+    }
+
+    .btn-next {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+    }
+
+    /* 3. 명예의 전당 */
+    .view-finished {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: var(--bg-card);
+      border: 2px solid var(--border-color);
+      border-radius: 24px;
+      padding: 36px;
+    }
+
+    .finished-title {
+      font-size: 44px;
+      font-weight: 900;
+      color: var(--accent-yellow);
+      margin-bottom: 12px;
+    }
+
+    .finished-quote {
+      font-size: 26px;
+      font-weight: 700;
+      color: #94a3b8;
+      margin-bottom: 36px;
+      font-style: italic;
+    }
+
+    .podium-container {
+      display: flex;
+      align-items: flex-end;
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .podium-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 220px;
+    }
+
+    .podium-avatar { font-size: 50px; margin-bottom: 10px; }
+    .podium-name { font-size: 26px; font-weight: 900; color: #ffffff; margin-bottom: 6px; }
+    .podium-score { font-size: 22px; font-weight: 800; color: var(--accent-yellow); margin-bottom: 12px; }
+    .podium-block {
+      width: 100%;
+      border-radius: 16px 16px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: 900;
+      color: #000;
+    }
+
+    .podium-1 { order: 2; }
+    .podium-1 .podium-block { height: 180px; background: linear-gradient(180deg, #facc15, #ca8a04); }
+    .podium-2 { order: 1; }
+    .podium-2 .podium-block { height: 130px; background: linear-gradient(180deg, #e2e8f0, #94a3b8); }
+    .podium-3 { order: 3; }
+    .podium-3 .podium-block { height: 100px; background: linear-gradient(180deg, #fdba74, #ea580c); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <span class="brand-icon">🚀</span>
+      <div class="brand-title">
+        소설 《원더》 독서 골든벨
+        <span class="brand-badge">교사용 전자칠판</span>
+        <span class="room-badge" id="roomBadge">방 코드: 생성 중...</span>
+      </div>
+    </div>
+
+    <div class="header-center" id="headerCenter" style="display: none;">
+      <span class="stage-badge" id="stageBadge">1단계</span>
+      <span class="q-number-badge" id="qNumberBadge">Q 01 / 20</span>
+      <div class="submit-counter-badge">
+        <span>✍️ 답안 제출:</span>
+        <span id="submitCount" style="color: var(--accent-yellow);">0</span>
+        <span>/</span>
+        <span id="totalStudentsCount">0</span>명
+      </div>
+    </div>
+
+    <div class="header-right">
+      <button class="icon-btn" id="soundToggleBtn" onclick="toggleSound()">
+        <span id="soundIcon">🔊</span> 효과음 켜짐
+      </button>
+      <button class="icon-btn" onclick="toggleFullScreen()">
+        ⛶ 전체화면 [F]
+      </button>
+      <button class="icon-btn" onclick="resetGame()" style="color: #f87171;">
+        🔄 초기화
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 1. 대기실 -->
+    <div class="view-lobby" id="lobbyView">
+      <div class="lobby-left">
+        <div class="lobby-qr-box">
+          <div id="qrCanvasContainer"></div>
+        </div>
+        <div class="lobby-url-box">
+          <div class="lobby-url-label">방 번호 (PIN)</div>
+          <div class="lobby-pin-text" id="joinPinText">----</div>
+          <div style="font-size: 14px; color: var(--accent-blue); margin-top: 6px; word-break: break-all;" id="joinUrlText"></div>
+        </div>
+        <button class="lobby-start-btn" onclick="startQuiz()">
+          <span>🚀</span> 퀴즈 시작하기
+        </button>
+      </div>
+
+      <div class="lobby-right">
+        <div class="lobby-right-header">
+          <div class="lobby-right-title">
+            <span>참여 학생 명단</span>
+            <span class="student-count-chip" id="lobbyStudentCount">0명</span>
+          </div>
+          <div style="font-size: 18px; color: var(--text-muted);">
+            QR코드를 찍거나 주소로 들어와 이름을 입력하세요!
+          </div>
+        </div>
+        <div class="student-grid" id="studentGrid"></div>
+      </div>
+    </div>
+
+    <!-- 2. 퀴즈 화면 -->
+    <div class="view-quiz" id="quizView" style="display: none;">
+      <div class="question-card">
+        <div class="question-title" id="questionText">문제 로딩 중...</div>
+        <div class="hint-box" id="hintBox">
+          <span>💡 힌트 :</span>
+          <span id="hintText">힌트 내용</span>
+        </div>
+      </div>
+
+      <div class="options-grid" id="optionsGrid">
+        <div class="option-card c1" id="optCard1">
+          <div class="option-num-badge">1</div>
+          <div class="option-text" id="optText1">보기 1</div>
+          <div class="option-vote-bar" id="voteBar1"></div>
+          <div class="option-vote-count" id="voteCount1">0명</div>
+        </div>
+        <div class="option-card c2" id="optCard2">
+          <div class="option-num-badge">2</div>
+          <div class="option-text" id="optText2">보기 2</div>
+          <div class="option-vote-bar" id="voteBar2"></div>
+          <div class="option-vote-count" id="voteCount2">0명</div>
+        </div>
+        <div class="option-card c3" id="optCard3">
+          <div class="option-num-badge">3</div>
+          <div class="option-text" id="optText3">보기 3</div>
+          <div class="option-vote-bar" id="voteBar3"></div>
+          <div class="option-vote-count" id="voteCount3">0명</div>
+        </div>
+        <div class="option-card c4" id="optCard4">
+          <div class="option-num-badge">4</div>
+          <div class="option-text" id="optText4">보기 4</div>
+          <div class="option-vote-bar" id="voteBar4"></div>
+          <div class="option-vote-count" id="voteCount4">0명</div>
+        </div>
+      </div>
+
+      <div class="explanation-drawer" id="explanationDrawer">
+        <div class="explanation-header">
+          <span>📖 《원더》 책 속 이야기 & 해설</span>
+        </div>
+        <div class="explanation-content" id="explanationText">해설 내용</div>
+      </div>
+
+      <div class="bottom-bar">
+        <div class="timer-track">
+          <div class="timer-fill" id="timerFill"></div>
+        </div>
+        <div class="controls-row">
+          <div class="timer-text-badge" id="timerBadge">
+            <span>⏱️</span>
+            <span id="timerSeconds">30</span>초 남음
+          </div>
+
+          <div class="action-btn-group">
+            <button class="action-btn btn-hint" id="btnHint" onclick="toggleHint()">
+              💡 힌트 보기 [H]
+            </button>
+            <button class="action-btn btn-pause" id="btnPause" onclick="toggleTimer()">
+              ⏸ 일시정지 [P]
+            </button>
+            <button class="action-btn btn-reveal" id="btnReveal" onclick="revealAnswer()">
+              ✨ 정답 공개 [Space]
+            </button>
+            <button class="action-btn btn-next" id="btnNext" onclick="nextQuestion()" style="display: none;">
+              다음 문제 ➔ [Space]
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 명예의 전당 -->
+    <div class="view-finished" id="finishedView" style="display: none;">
+      <div class="finished-title">🏆 《원더》 독서 골든벨 명예의 전당 🏆</div>
+      <div class="finished-quote">
+        "옳음과 친절함 가운데 하나를 골라야 한다면, 친절함을 선택하라." — 브라운 선생님의 격언
+      </div>
+
+      <div class="podium-container">
+        <div class="podium-step podium-2" id="podium2" style="visibility: hidden;">
+          <div class="podium-avatar">🥈</div>
+          <div class="podium-name" id="podiumName2">-</div>
+          <div class="podium-score" id="podiumScore2">0점</div>
+          <div class="podium-block">2</div>
+        </div>
+        <div class="podium-step podium-1" id="podium1" style="visibility: hidden;">
+          <div class="podium-avatar">👑</div>
+          <div class="podium-name" id="podiumName1">-</div>
+          <div class="podium-score" id="podiumScore1">0점</div>
+          <div class="podium-block">1</div>
+        </div>
+        <div class="podium-step podium-3" id="podium3" style="visibility: hidden;">
+          <div class="podium-avatar">🥉</div>
+          <div class="podium-name" id="podiumName3">-</div>
+          <div class="podium-score" id="podiumScore3">0점</div>
+          <div class="podium-block">3</div>
+        </div>
+      </div>
+
+      <button class="lobby-start-btn" onclick="resetGame()" style="margin-top: 20px;">
+        🔄 퀴즈 처음부터 다시하기
+      </button>
+    </div>
+  </main>
+
+  <script>
+    /* ================= Web Audio API 오디오 엔진 ================= */
+    let audioCtx = null;
+    let soundEnabled = true;
+
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      document.getElementById('soundToggleBtn').innerHTML = soundEnabled ? '<span>🔊</span> 효과음 켜짐' : '<span>🔇</span> 효과음 꺼짐';
+    }
+    function playTone(freq, type, duration, startTime = 0) {
+      if (!soundEnabled) return;
+      initAudio();
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + startTime);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime + startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + startTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + startTime);
+        osc.stop(audioCtx.currentTime + startTime + duration);
+      } catch (e) {}
+    }
+    function playTick() { playTone(800, 'sine', 0.05); }
+    function playUrgentTick() { playTone(1200, 'square', 0.08); }
+    function playCorrectFanfare() {
+      [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => playTone(freq, 'triangle', 0.4, idx * 0.12));
+    }
+    function playVictoryMelody() {
+      [440, 554, 659, 880, 784, 880].forEach((freq, idx) => playTone(freq, 'triangle', 0.5, idx * 0.16));
+    }
+
+    /* ================= MQTT 클라우드 통신 엔진 ================= */
+    const ROOM_CODE = String(Math.floor(1000 + Math.random() * 9000));
+    let mqttClient = null;
+    let questions = [];
+
+    let gameState = {
+      status: 'lobby', // lobby, question, answer, finished
+      currentQIndex: 0,
+      showHint: false,
+      timerTotal: 30,
+      timerRemaining: 30,
+      timerActive: false,
+      students: {}, // id -> { id, name, score, streak }
+      currentAnswers: {}, // id -> choice
+      choiceCounts: { 1: 0, 2: 0, 3: 0, 4: 0 }
+    };
+
+    let timerInterval = null;
+
+    async function initGame() {
+      // 1. 방 코드 UI 설정
+      document.getElementById('roomBadge').innerText = `방 코드: ${ROOM_CODE}`;
+      document.getElementById('joinPinText').innerText = ROOM_CODE;
+
+      // 2. 학생 접속 URL 구성 및 QR 생성
+      const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
+      const studentUrl = `${baseUrl}/student.html?room=${ROOM_CODE}`;
+      document.getElementById('joinUrlText').innerText = studentUrl;
+
+      new QRCode(document.getElementById('qrCanvasContainer'), {
+        text: studentUrl,
+        width: 240,
+        height: 240,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+
+      // 3. 문제 데이터 로드
+      try {
+        const res = await fetch('questions.json');
+        questions = await res.json();
+      } catch (e) {
+        console.error('Failed to load questions.json', e);
+      }
+
+      // 4. MQTT 연결 (EMQX 무료 공개 WSS 브로커)
+      mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+        clientId: 'wonder_teacher_' + Math.random().toString(16).substr(2, 8),
+        clean: true,
+        reconnectPeriod: 2000
+      });
+
+      mqttClient.on('connect', () => {
+        console.log('Connected to MQTT Cloud Broker!');
+        mqttClient.subscribe(`wonder/${ROOM_CODE}/join`);
+        mqttClient.subscribe(`wonder/${ROOM_CODE}/submit`);
+        broadcastState();
+      });
+
+      mqttClient.on('message', (topic, message) => {
+        try {
+          const data = JSON.parse(message.toString());
+          if (topic === `wonder/${ROOM_CODE}/join`) {
+            handleStudentJoin(data);
+          } else if (topic === `wonder/${ROOM_CODE}/submit`) {
+            handleStudentSubmit(data);
+          }
+        } catch (e) {}
+      });
+
+      // 5. 로컬 타이머 루프 (1초 주기)
+      timerInterval = setInterval(() => {
+        if (gameState.status === 'question' && gameState.timerActive && gameState.timerRemaining > 0) {
+          gameState.timerRemaining--;
+          if (gameState.timerRemaining === 0) {
+            gameState.timerActive = false; // 시간 마감 (교사가 직접 정답 공개)
+          }
+          broadcastState();
+          updateUI();
+        }
+      }, 1000);
+    }
+
+    function handleStudentJoin(data) {
+      if (!gameState.students[data.studentId]) {
+        gameState.students[data.studentId] = {
+          id: data.studentId,
+          name: data.name || '학생',
+          score: 0,
+          streak: 0
+        };
+        broadcastState();
+        updateUI();
+      }
+    }
+
+    function handleStudentSubmit(data) {
+      if (gameState.status !== 'question') return;
+      if (data.qIndex !== gameState.currentQIndex) return;
+
+      gameState.currentAnswers[data.studentId] = data.choice;
+      
+      // 집계 업데이트
+      gameState.choiceCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+      Object.values(gameState.currentAnswers).forEach(choice => {
+        if (gameState.choiceCounts[choice] !== undefined) gameState.choiceCounts[choice]++;
+      });
+
+      broadcastState();
+      updateUI();
+    }
+
+    function broadcastState() {
+      if (!mqttClient || !mqttClient.connected) return;
+
+      const currentQ = questions[gameState.currentQIndex] || null;
+      const payload = {
+        status: gameState.status,
+        roomCode: ROOM_CODE,
+        currentQIndex: gameState.currentQIndex,
+        timerTotal: gameState.timerTotal,
+        timerRemaining: gameState.timerRemaining,
+        showHint: gameState.showHint,
+        showAnswer: (gameState.status === 'answer'),
+        question: currentQ ? {
+          id: currentQ.id,
+          stage: currentQ.stage,
+          question: currentQ.question,
+          options: currentQ.options,
+          answer: (gameState.status === 'answer') ? currentQ.answer : null,
+          hint: currentQ.hint,
+          explanation: (gameState.status === 'answer') ? currentQ.explanation : null,
+          totalQuestions: questions.length
+        } : null,
+        scores: Object.values(gameState.students).map(s => ({ id: s.id, name: s.name, score: s.score }))
+      };
+
+      mqttClient.publish(`wonder/${ROOM_CODE}/state`, JSON.stringify(payload), { qos: 1 });
+    }
+
+    /* ================= UI 렌더링 ================= */
+    let lastRenderedStatus = null;
+
+    function updateUI() {
+      const state = gameState;
+      const prevStatus = lastRenderedStatus;
+      lastRenderedStatus = state.status;
+
+      const lobbyView = document.getElementById('lobbyView');
+      const quizView = document.getElementById('quizView');
+      const finishedView = document.getElementById('finishedView');
+      const headerCenter = document.getElementById('headerCenter');
+
+      if (state.status === 'lobby') {
+        lobbyView.style.display = 'flex';
+        quizView.style.display = 'none';
+        finishedView.style.display = 'none';
+        headerCenter.style.display = 'none';
+
+        const studentList = Object.values(state.students);
+        document.getElementById('lobbyStudentCount').innerText = `${studentList.length}명`;
+        const grid = document.getElementById('studentGrid');
+        grid.innerHTML = '';
+        studentList.forEach(s => {
+          const pill = document.createElement('div');
+          pill.className = 'student-pill';
+          pill.innerText = s.name;
+          grid.appendChild(pill);
+        });
+
+      } else if (state.status === 'question' || state.status === 'answer') {
+        lobbyView.style.display = 'none';
+        quizView.style.display = 'flex';
+        finishedView.style.display = 'none';
+        headerCenter.style.display = 'flex';
+
+        const q = questions[state.currentQIndex];
+        const studentCount = Object.keys(state.students).length;
+        const submittedCount = Object.keys(state.currentAnswers).length;
+
+        document.getElementById('stageBadge').innerText = q.stage;
+        document.getElementById('qNumberBadge').innerText = `Q ${String(q.id).padStart(2, '0')} / ${questions.length}`;
+        document.getElementById('submitCount').innerText = submittedCount;
+        document.getElementById('totalStudentsCount').innerText = studentCount;
+        document.getElementById('questionText').innerText = q.question;
+
+        // 힌트
+        const hintBox = document.getElementById('hintBox');
+        if (state.showHint) {
+          hintBox.classList.add('show');
+          document.getElementById('hintText').innerText = q.hint;
+        } else {
+          hintBox.classList.remove('show');
+        }
+
+        // 보기 4개
+        q.options.forEach((opt, idx) => {
+          const num = idx + 1;
+          document.getElementById(`optText${num}`).innerText = opt;
+          const card = document.getElementById(`optCard${num}`);
+          const voteBar = document.getElementById(`voteBar${num}`);
+          const voteCount = document.getElementById(`voteCount${num}`);
+
+          if (state.status === 'answer') {
+            const count = state.choiceCounts[num] || 0;
+            const percent = studentCount > 0 ? (count / studentCount) * 100 : 0;
+            voteBar.style.width = `${percent}%`;
+            voteCount.style.display = 'block';
+            voteCount.innerText = `${count}명`;
+
+            if (num === q.answer) {
+              card.classList.add('is-correct');
+              card.classList.remove('is-wrong');
+            } else {
+              card.classList.remove('is-correct');
+              card.classList.add('is-wrong');
+            }
+          } else {
+            card.classList.remove('is-correct', 'is-wrong');
+            voteBar.style.width = '0%';
+            voteCount.style.display = 'none';
+          }
+        });
+
+        // 해설
+        const expDrawer = document.getElementById('explanationDrawer');
+        if (state.status === 'answer') {
+          expDrawer.classList.add('show');
+          document.getElementById('explanationText').innerText = q.explanation;
+          document.getElementById('btnReveal').style.display = 'none';
+          document.getElementById('btnNext').style.display = 'flex';
+          if (prevStatus === 'question') playCorrectFanfare();
+        } else {
+          expDrawer.classList.remove('show');
+          document.getElementById('btnReveal').style.display = 'flex';
+          document.getElementById('btnNext').style.display = 'none';
+        }
+
+        // 타이머
+        const timerSeconds = document.getElementById('timerSeconds');
+        const timerBadge = document.getElementById('timerBadge');
+        const timerFill = document.getElementById('timerFill');
+        const btnReveal = document.getElementById('btnReveal');
+
+        timerSeconds.innerText = state.timerRemaining;
+        const progressPercent = (state.timerRemaining / state.timerTotal) * 100;
+        timerFill.style.width = `${progressPercent}%`;
+
+        if (state.status === 'question') {
+          if (state.timerRemaining === 0) {
+            timerBadge.classList.add('urgent');
+            timerBadge.innerHTML = '<span>⏰</span> 시간 마감! [정답 공개]를 누르세요';
+            btnReveal.style.animation = 'pulseUrgent 0.8s infinite alternate';
+          } else if (state.timerRemaining <= 5) {
+            timerBadge.classList.add('urgent');
+            timerBadge.innerHTML = `<span>⏱️</span> <span id="timerSeconds">${state.timerRemaining}</span>초 남음`;
+            timerFill.classList.add('urgent');
+            playUrgentTick();
+          } else {
+            timerBadge.classList.remove('urgent');
+            timerBadge.innerHTML = `<span>⏱️</span> <span id="timerSeconds">${state.timerRemaining}</span>초 남음`;
+            timerFill.classList.remove('urgent');
+            btnReveal.style.animation = 'none';
+            playTick();
+          }
+
+          if (studentCount > 0 && submittedCount >= studentCount) {
+            document.getElementById('submitCount').style.color = '#4ade80';
+            btnReveal.style.animation = 'pulseUrgent 0.8s infinite alternate';
+          } else {
+            document.getElementById('submitCount').style.color = 'var(--accent-yellow)';
+          }
+        }
+
+        document.getElementById('btnPause').innerText = state.timerActive ? '⏸ 일시정지 [P]' : '▶️ 재개 [P]';
+
+      } else if (state.status === 'finished') {
+        lobbyView.style.display = 'none';
+        quizView.style.display = 'none';
+        finishedView.style.display = 'flex';
+        headerCenter.style.display = 'none';
+
+        const sorted = Object.values(state.students).sort((a, b) => b.score - a.score);
+        if (sorted[0]) {
+          document.getElementById('podium1').style.visibility = 'visible';
+          document.getElementById('podiumName1').innerText = sorted[0].name;
+          document.getElementById('podiumScore1').innerText = `${sorted[0].score}점`;
+        }
+        if (sorted[1]) {
+          document.getElementById('podium2').style.visibility = 'visible';
+          document.getElementById('podiumName2').innerText = sorted[1].name;
+          document.getElementById('podiumScore2').innerText = `${sorted[1].score}점`;
+        }
+        if (sorted[2]) {
+          document.getElementById('podium3').style.visibility = 'visible';
+          document.getElementById('podiumName3').innerText = sorted[2].name;
+          document.getElementById('podiumScore3').innerText = `${sorted[2].score}점`;
+        }
+        if (prevStatus !== 'finished') playVictoryMelody();
+      }
+    }
+
+    /* ================= 제어 함수 ================= */
+    function startQuiz() {
+      initAudio();
+      gameState.status = 'question';
+      gameState.currentQIndex = 0;
+      gameState.timerTotal = questions[0].timeLimit || 30;
+      gameState.timerRemaining = gameState.timerTotal;
+      gameState.timerActive = true;
+      gameState.showHint = false;
+      gameState.currentAnswers = {};
+      gameState.choiceCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+      Object.values(gameState.students).forEach(s => { s.score = 0; s.streak = 0; });
+      broadcastState();
+      updateUI();
+    }
+
+    function toggleHint() {
+      gameState.showHint = !gameState.showHint;
+      broadcastState();
+      updateUI();
+    }
+
+    function toggleTimer() {
+      gameState.timerActive = !gameState.timerActive;
+      broadcastState();
+      updateUI();
+    }
+
+    function revealAnswer() {
+      if (gameState.status !== 'question') return;
+      gameState.status = 'answer';
+      gameState.timerActive = false;
+
+      // 채점
+      const correct = questions[gameState.currentQIndex].answer;
+      Object.entries(gameState.currentAnswers).forEach(([sid, choice]) => {
+        if (gameState.students[sid]) {
+          if (choice === correct) {
+            gameState.students[sid].score += 100;
+            gameState.students[sid].streak++;
+          } else {
+            gameState.students[sid].streak = 0;
+          }
+        }
+      });
+
+      broadcastState();
+      updateUI();
+    }
+
+    function nextQuestion() {
+      if (gameState.currentQIndex < questions.length - 1) {
+        gameState.currentQIndex++;
+        gameState.status = 'question';
+        gameState.timerTotal = questions[gameState.currentQIndex].timeLimit || 30;
+        gameState.timerRemaining = gameState.timerTotal;
+        gameState.timerActive = true;
+        gameState.showHint = false;
+        gameState.currentAnswers = {};
+        gameState.choiceCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+      } else {
+        gameState.status = 'finished';
+        gameState.timerActive = false;
+      }
+      broadcastState();
+      updateUI();
+    }
+
+    function resetGame() {
+      if (confirm('골든벨을 대기실 상태로 초기화하시겠습니까?')) {
+        gameState.status = 'lobby';
+        gameState.currentQIndex = 0;
+        gameState.timerActive = false;
+        gameState.currentAnswers = {};
+        gameState.choiceCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        broadcastState();
+        updateUI();
+      }
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+      else if (document.exitFullscreen) document.exitFullscreen();
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'f' || e.key === 'F' || e.key === 'ㄹ') toggleFullScreen();
+      else if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        if (gameState.status === 'question') revealAnswer();
+        else if (gameState.status === 'answer') nextQuestion();
+      } else if (e.key === 'h' || e.key === 'H' || e.key === 'ㅗ') toggleHint();
+      else if (e.key === 'p' || e.key === 'P' || e.key === 'ㅔ') toggleTimer();
+    });
+
+    window.addEventListener('DOMContentLoaded', initGame);
+  </script>
+</body>
+</html>

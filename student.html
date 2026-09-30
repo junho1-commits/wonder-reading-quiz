@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>《원더》 독서 골든벨 - 학생용</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet">
+  <!-- 클라우드 실시간 동기화 MQTT 라이브러리 -->
+  <script src="https://unpkg.com/mqtt@5.3.5/dist/mqtt.min.js"></script>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --border-color: #334155;
+      --text-main: #ffffff;
+      --text-muted: #94a3b8;
+      
+      --c1: #ef4444;
+      --c2: #3b82f6;
+      --c3: #eab308;
+      --c4: #10b981;
+
+      --accent-yellow: #facc15;
+      --accent-green: #4ade80;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'SUIT Variable', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      height: 60px;
+      background: #111827;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+    }
+
+    .header-user {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 16px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .header-score-badge {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: var(--accent-yellow);
+      font-size: 16px;
+      font-weight: 900;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 60px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 1. 입장 화면 */
+    .join-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .join-logo {
+      font-size: 60px;
+      margin-bottom: 12px;
+    }
+
+    .join-title {
+      font-size: 26px;
+      font-weight: 900;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+
+    .join-subtitle {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .join-input {
+      width: 100%;
+      max-width: 300px;
+      background: #1e293b;
+      border: 2px solid #475569;
+      border-radius: 14px;
+      color: #ffffff;
+      font-size: 20px;
+      font-weight: 800;
+      padding: 14px;
+      text-align: center;
+      margin-bottom: 14px;
+      outline: none;
+    }
+
+    .join-btn {
+      width: 100%;
+      max-width: 300px;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #ffffff;
+      font-size: 22px;
+      font-weight: 900;
+      padding: 16px;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    /* 2. 대기실 화면 */
+    .lobby-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .lobby-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #334155;
+      border-top-color: var(--accent-yellow);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .lobby-msg-title {
+      font-size: 24px;
+      font-weight: 900;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .lobby-msg-sub {
+      font-size: 16px;
+      color: var(--text-muted);
+    }
+
+    /* 3. 퀴즈 화면 */
+    .quiz-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 14px;
+      gap: 12px;
+    }
+
+    .quiz-top-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1e293b;
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .quiz-q-num {
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--accent-yellow);
+    }
+
+    .quiz-timer {
+      font-size: 18px;
+      font-weight: 900;
+      color: #ffffff;
+    }
+
+    .quiz-prompt-card {
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 14px 18px;
+      max-height: 25vh;
+      overflow-y: auto;
+    }
+
+    .quiz-prompt-text {
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1.4;
+      color: #ffffff;
+    }
+
+    .submitted-bar {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid #38bdf8;
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 800;
+      color: #38bdf8;
+      display: none;
+    }
+
+    .btn-options-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .option-btn {
+      border-radius: 16px;
+      border: 3px solid transparent;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: left;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .option-btn:active { transform: scale(0.96); }
+
+    .option-btn.btn-c1 { background: rgba(239, 68, 68, 0.2); border-color: var(--c1); }
+    .option-btn.btn-c2 { background: rgba(59, 130, 246, 0.2); border-color: var(--c2); }
+    .option-btn.btn-c3 { background: rgba(234, 179, 8, 0.2); border-color: var(--c3); }
+    .option-btn.btn-c4 { background: rgba(16, 185, 129, 0.2); border-color: var(--c4); }
+
+    .btn-badge-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 900;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+
+    .btn-c1 .btn-badge-num { background: var(--c1); }
+    .btn-c2 .btn-badge-num { background: var(--c2); }
+    .btn-c3 .btn-badge-num { background: var(--c3); }
+    .btn-c4 .btn-badge-num { background: var(--c4); }
+
+    .btn-text {
+      font-size: 16px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.35;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+
+    .option-btn.selected {
+      box-shadow: 0 0 20px #ffffff;
+      border-color: #ffffff !important;
+    }
+
+    .option-btn.selected::after {
+      content: '내 선택 👆';
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #ffffff;
+      color: #000;
+      font-size: 12px;
+      font-weight: 900;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    /* 4. 결과 피드백 화면 */
+    .result-overlay {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .result-icon { font-size: 64px; margin-bottom: 12px; }
+    .result-title { font-size: 32px; font-weight: 900; margin-bottom: 6px; }
+    .result-subtitle { font-size: 17px; font-weight: 700; color: var(--text-muted); margin-bottom: 24px; }
+    .result-score-card {
+      background: #1e293b;
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px 32px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-user">
+      <span>🔒</span>
+      <span id="headerName">원더 독서 골든벨</span>
+      <span style="font-size: 12px; color: var(--accent-yellow); margin-left: 4px;">(교사 동기화)</span>
+    </div>
+    <div class="header-score-badge" id="headerScoreBadge" style="display: none;">
+      <span id="myScoreText">0</span>점
+    </div>
+  </header>
+
+  <main>
+    <!-- 1. 입장 화면 -->
+    <div class="join-container" id="joinView">
+      <div class="join-logo">🧑‍🚀</div>
+      <div class="join-title">소설 《원더》 독서 골든벨</div>
+      <div class="join-subtitle">선생님 전자칠판 실시간 연동 퀴즈</div>
+
+      <input type="text" id="pinInput" class="join-input" placeholder="방 번호 (PIN 4자리)" maxlength="6">
+      <input type="text" id="nameInput" class="join-input" placeholder="내 이름 (또는 번호와 이름)" maxlength="10">
+      <button class="join-btn" onclick="joinGame()">골든벨 입장하기 ➔</button>
+    </div>
+
+    <!-- 2. 대기실 화면 -->
+    <div class="lobby-container" id="lobbyView" style="display: none;">
+      <div class="lobby-spinner"></div>
+      <div class="lobby-msg-title" id="welcomeMsg">대기실 입장 완료!</div>
+      <div class="lobby-msg-sub">선생님이 퀴즈를 시작하기를 기다리고 있습니다.</div>
+    </div>
+
+    <!-- 3. 퀴즈 풀이 화면 -->
+    <div class="quiz-container" id="quizView" style="display: none;">
+      <div class="quiz-top-info">
+        <span class="quiz-q-num" id="qNumText">Q 01 / 20</span>
+        <span class="quiz-timer">⏱️ <span id="studentTimer">30</span>초</span>
+      </div>
+
+      <div class="quiz-prompt-card">
+        <div class="quiz-prompt-text" id="qPromptText">문제를 불러오는 중...</div>
+      </div>
+
+      <div class="submitted-bar" id="submittedNotice">
+        ✅ 답안 제출 완료! 선생님이 정답을 공개할 때까지 전자칠판을 보세요. ⏳
+      </div>
+
+      <div class="btn-options-grid">
+        <button class="option-btn btn-c1" id="btnOpt1" onclick="submitChoice(1)">
+          <div class="btn-badge-num">1</div>
+          <div class="btn-text" id="btnText1">보기 1</div>
+        </button>
+        <button class="option-btn btn-c2" id="btnOpt2" onclick="submitChoice(2)">
+          <div class="btn-badge-num">2</div>
+          <div class="btn-text" id="btnText2">보기 2</div>
+        </button>
+        <button class="option-btn btn-c3" id="btnOpt3" onclick="submitChoice(3)">
+          <div class="btn-badge-num">3</div>
+          <div class="btn-text" id="btnText3">보기 3</div>
+        </button>
+        <button class="option-btn btn-c4" id="btnOpt4" onclick="submitChoice(4)">
+          <div class="btn-badge-num">4</div>
+          <div class="btn-text" id="btnText4">보기 4</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- 4. 결과 피드백 화면 -->
+    <div class="result-overlay" id="resultView" style="display: none;">
+      <div class="result-icon" id="resultIcon">🎉</div>
+      <div class="result-title" id="resultTitle">정답입니다!</div>
+      <div class="result-subtitle" id="resultSub">멋져요! 점수를 획득했습니다.</div>
+      <div class="result-score-card">
+        <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 4px;">내 현재 총점</div>
+        <div style="font-size: 32px; font-weight: 900; color: var(--accent-yellow);" id="resScore">100점</div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let roomCode = '';
+    let studentId = 's_' + Math.random().toString(16).substr(2, 8);
+    let studentName = '';
+    let mqttClient = null;
+    let myChoice = null;
+    let currentQIdx = -1;
+    let myScore = 0;
+
+    function triggerHaptic() {
+      if (navigator.vibrate) navigator.vibrate(40);
+    }
+
+    function initUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      const urlRoom = params.get('room');
+      if (urlRoom) {
+        document.getElementById('pinInput').value = urlRoom;
+      }
+    }
+
+    function joinGame() {
+      const pin = document.getElementById('pinInput').value.trim();
+      const name = document.getElementById('nameInput').value.trim();
+      if (!pin || !name) {
+        alert('방 번호와 이름을 모두 입력해 주세요!');
+        return;
+      }
+
+      roomCode = pin;
+      studentName = name;
+
+      // MQTT 연결
+      mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+        clientId: 'wonder_stu_' + studentId,
+        clean: true,
+        reconnectPeriod: 2000
+      });
+
+      mqttClient.on('connect', () => {
+        console.log('Student connected to MQTT');
+        mqttClient.subscribe(`wonder/${roomCode}/state`);
+        mqttClient.publish(`wonder/${roomCode}/join`, JSON.stringify({
+          studentId: studentId,
+          name: studentName
+        }), { qos: 1 });
+
+        showView('lobbyView');
+        document.getElementById('welcomeMsg').innerText = `환영합니다, ${studentName} 학생! 👋`;
+        document.getElementById('headerName').innerText = `${studentName} 학생`;
+        document.getElementById('headerScoreBadge').style.display = 'block';
+      });
+
+      mqttClient.on('message', (topic, message) => {
+        try {
+          const state = JSON.parse(message.toString());
+          if (topic === `wonder/${roomCode}/state`) {
+            handleTeacherState(state);
+          }
+        } catch (e) {}
+      });
+    }
+
+    function handleTeacherState(state) {
+      if (state.scores) {
+        const me = state.scores.find(s => s.id === studentId);
+        if (me) {
+          myScore = me.score;
+          document.getElementById('myScoreText').innerText = myScore;
+          document.getElementById('resScore').innerText = `${myScore}점`;
+        }
+      }
+
+      if (state.status === 'lobby') {
+        showView('lobbyView');
+        myChoice = null;
+        currentQIdx = -1;
+
+      } else if (state.status === 'question') {
+        showView('quizView');
+
+        if (currentQIdx !== state.currentQIndex) {
+          currentQIdx = state.currentQIndex;
+          myChoice = null;
+          document.getElementById('submittedNotice').style.display = 'none';
+          for (let i = 1; i <= 4; i++) {
+            document.getElementById(`btnOpt${i}`).classList.remove('selected');
+          }
+        }
+
+        document.getElementById('qNumText').innerText = `Q ${String(state.question.id).padStart(2, '0')}`;
+        document.getElementById('studentTimer').innerText = state.timerRemaining;
+        document.getElementById('qPromptText').innerText = state.question.question;
+
+        state.question.options.forEach((opt, idx) => {
+          document.getElementById(`btnText${idx + 1}`).innerText = opt;
+        });
+
+      } else if (state.status === 'answer') {
+        showView('resultView');
+        const isCorrect = (myChoice === state.question.answer);
+        const icon = document.getElementById('resultIcon');
+        const title = document.getElementById('resultTitle');
+        const sub = document.getElementById('resultSub');
+
+        if (isCorrect) {
+          icon.innerText = '🎉';
+          title.innerText = '정답입니다!';
+          title.style.color = '#4ade80';
+          sub.innerText = '멋져요! 점수를 획득했습니다.';
+        } else {
+          icon.innerText = '😢';
+          title.innerText = '아쉬워요!';
+          title.style.color = '#f87171';
+          sub.innerText = `정답은 [${state.question.answer}번]이었습니다.`;
+        }
+
+      } else if (state.status === 'finished') {
+        showView('resultView');
+        document.getElementById('resultIcon').innerText = '🏆';
+        document.getElementById('resultTitle').innerText = '골든벨 종료!';
+        document.getElementById('resultTitle').style.color = '#facc15';
+        document.getElementById('resultSub').innerText = '너는 진정한 기적(Wonder)이란다!';
+      }
+    }
+
+    function submitChoice(choice) {
+      if (myChoice !== null) return;
+      myChoice = choice;
+      triggerHaptic();
+
+      document.getElementById(`btnOpt${choice}`).classList.add('selected');
+      document.getElementById('submittedNotice').style.display = 'block';
+
+      if (mqttClient && mqttClient.connected) {
+        mqttClient.publish(`wonder/${roomCode}/submit`, JSON.stringify({
+          studentId: studentId,
+          qIndex: currentQIdx,
+          choice: choice
+        }), { qos: 1 });
+      }
+    }
+
+    function showView(viewId) {
+      ['joinView', 'lobbyView', 'quizView', 'resultView'].forEach(id => {
+        document.getElementById(id).style.display = (id === viewId) ? 'flex' : 'none';
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', initUrlParams);
+  </script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>소설 《원더》 실시간 독서 골든벨</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --card-bg: #161e2e;
+      --border-color: #2e3b52;
+      --accent-yellow: #facc15;
+      --accent-blue: #38bdf8;
+      --accent-green: #4ade80;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'SUIT Variable', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background: var(--bg-dark);
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    .hero-badge {
+      background: rgba(250, 204, 21, 0.15);
+      border: 1px solid var(--accent-yellow);
+      color: var(--accent-yellow);
+      font-size: 18px;
+      font-weight: 800;
+      padding: 6px 18px;
+      border-radius: 30px;
+      margin-bottom: 20px;
+    }
+    .hero-title {
+      font-size: 42px;
+      font-weight: 900;
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+    }
+    .hero-desc {
+      font-size: 20px;
+      color: #94a3b8;
+      margin-bottom: 40px;
+      max-width: 600px;
+      line-height: 1.5;
+    }
+    .choice-container {
+      display: flex;
+      gap: 24px;
+      width: 100%;
+      max-width: 720px;
+    }
+    .role-card {
+      flex: 1;
+      background: var(--card-bg);
+      border: 2px solid var(--border-color);
+      border-radius: 24px;
+      padding: 36px 24px;
+      text-decoration: none;
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .role-card:hover {
+      transform: translateY(-8px);
+      border-color: var(--accent-blue);
+      box-shadow: 0 16px 36px rgba(56, 189, 248, 0.25);
+    }
+    .role-icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+    }
+    .role-title {
+      font-size: 26px;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+    .role-badge {
+      font-size: 15px;
+      font-weight: 800;
+      padding: 4px 14px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+    }
+    .teacher-badge {
+      background: #3b82f6;
+      color: #ffffff;
+    }
+    .student-badge {
+      background: #10b981;
+      color: #ffffff;
+    }
+    .role-sub {
+      font-size: 16px;
+      color: #94a3b8;
+      line-height: 1.4;
+    }
+    .quote-box {
+      margin-top: 50px;
+      font-size: 17px;
+      color: #64748b;
+      font-style: italic;
+    }
+    @media (max-width: 640px) {
+      .choice-container {
+        flex-direction: column;
+      }
+      .hero-title {
+        font-size: 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="hero-badge">📖 6학년 2학기 국어 독서단원 연계</div>
+  <h1 class="hero-title">소설 《원더 (Wonder)》 실시간 독서 골든벨</h1>
+  <p class="hero-desc">교실 전자칠판 대화면과 학생 스마트폰/크롬북이 실시간으로 함께 반응하는 참여형 퀴즈 시스템</p>
+
+  <div class="choice-container">
+    <a href="teacher.html" class="role-card">
+      <div class="role-icon">🖥️</div>
+      <div class="role-badge teacher-badge">선생님 전자칠판용</div>
+      <div class="role-title">교사용 화면 열기</div>
+      <div class="role-sub">초대형 QR코드, 30초 타이머, 실시간 제출 통계, 책 속 해설 및 명예의 전당 포디움</div>
+    </a>
+
+    <a href="student.html" class="role-card">
+      <div class="role-icon">📱</div>
+      <div class="role-badge student-badge">학생 스마트폰 / 크롬북용</div>
+      <div class="role-title">학생용 화면 열기</div>
+      <div class="role-sub">방 번호와 이름을 입력하고 선생님의 진행에 맞춰 실시간으로 참여하기</div>
+    </a>
+  </div>
+
+  <div class="quote-box">
+    "옳음과 친절함 가운데 하나를 골라야 한다면, 친절함을 선택하라." — R. J. 팔라시오 《원더》
+  </div>
+</body>
+</html>
