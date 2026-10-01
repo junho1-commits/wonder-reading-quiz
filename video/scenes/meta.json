@@ -1,0 +1,101 @@
+{
+  "room": "786533",
+  "scenes": [
+    {
+      "id": "01",
+      "step": 1,
+      "title": "교사 화면 열기",
+      "caption": "교사 컴퓨터(전자칠판)에서 teacher.html을 엽니다. 방 번호(PIN)와 QR코드가 나타나요.",
+      "teacher": true,
+      "phone": false
+    },
+    {
+      "id": "02",
+      "step": 2,
+      "title": "학생 휴대폰으로 접속",
+      "caption": "학생은 휴대폰으로 QR코드를 찍거나 접속 주소로 들어갑니다. 방 번호는 자동으로 입력돼요.",
+      "teacher": true,
+      "phone": true
+    },
+    {
+      "id": "03",
+      "step": 3,
+      "title": "학년·반·번호, 이름 입력",
+      "caption": "학년·반·번호와 이름을 입력하고 [골든벨 입장하기]를 누릅니다.",
+      "teacher": true,
+      "phone": true
+    },
+    {
+      "id": "04",
+      "step": 4,
+      "title": "입장 완료",
+      "caption": "입장하면 학생 폰은 대기실이 되고, 칠판에는 입장한 학생이 학반·번호로 실시간 표시됩니다.",
+      "teacher": true,
+      "phone": true
+    },
+    {
+      "id": "05",
+      "step": 5,
+      "title": "퀴즈 세트 선택",
+      "caption": "시작 전에 퀴즈 세트를 고릅니다. 선택한 세트 이름이 학생 폰에도 바로 표시돼요.",
+      "teacher": true,
+      "phone": true
+    },
+    {
+      "id": "06",
+      "step": 6,
+      "title": "입장 잠금 (선택)",
+      "caption": "모두 들어왔다면 [입장 잠금]으로 새 학생의 입장을 막을 수 있어요. 이미 들어온 학생의 재접속은 가능해요.",
+      "teacher": true,
+      "phone": true
+    },
+    {
+      "id": "07",
+      "step": 7,
+      "title": "퀴즈 시작",
+      "caption": "[퀴즈 시작하기]를 누르면 모든 학생 폰에 같은 문제가 동시에 나타납니다.",
+      "teacher": true,
+      "phone": true
+    },
+    {
+      "id": "08",
+      "step": 8,
+      "title": "학생이 답 제출",
+      "caption": "학생이 보기를 고르면 \"답안 제출 n/전체 명\"이 칠판 위쪽에 실시간으로 올라갑니다.",
+      "teacher": true,
+      "phone": true
+    },
+    {
+      "id": "09",
+      "step": 9,
+      "title": "힌트와 일시정지",
+      "caption": "[H] 키로 힌트를 보여 주고, [P] 키로 타이머를 잠시 멈출 수 있어요.",
+      "teacher": true,
+      "phone": false
+    },
+    {
+      "id": "10",
+      "step": 10,
+      "title": "정답 공개",
+      "caption": "[Space] 키로 정답을 공개합니다. 학생 폰에는 정답 여부가, 칠판에는 정답과 책 속 해설이 나타나요.",
+      "teacher": true,
+      "phone": true
+    },
+    {
+      "id": "11",
+      "step": 11,
+      "title": "다음 문제",
+      "caption": "[Space]를 한 번 더 누르면 다음 문제로 넘어갑니다. 같은 방식으로 문제를 계속 진행해요.",
+      "teacher": true,
+      "phone": true
+    },
+    {
+      "id": "12",
+      "step": 12,
+      "title": "골든벨 종료",
+      "caption": "마지막 문제가 끝나면 점수 순위가 나오는 명예의 전당 화면이 나타나요. 학생 폰에도 종료 화면이 표시됩니다.",
+      "teacher": true,
+      "phone": true
+    }
+  ]
+}
