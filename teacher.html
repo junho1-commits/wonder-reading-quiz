@@ -392,6 +392,19 @@
       color: #94a3b8;
     }
 
+    .copy-url-btn {
+      margin-top: 10px;
+      background: #1e3a8a;
+      border: 2px solid #3b82f6;
+      color: #ffffff;
+      border-radius: 10px;
+      padding: 8px 18px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .copy-url-btn:hover { background: #2563eb; }
+
     /* 대기실: 학반별 그룹 */
     .class-group {
       width: 100%;
@@ -988,6 +1001,7 @@
           <div class="lobby-url-label">방 번호 (PIN)</div>
           <div class="lobby-pin-text" id="joinPinText">----</div>
           <div style="font-size: 14px; color: var(--accent-blue); margin-top: 6px; word-break: break-all;" id="joinUrlText"></div>
+          <button class="copy-url-btn" id="copyUrlBtn" onclick="copyStudentUrl()">🔗 학생 접속 주소 복사</button>
         </div>
         <div class="set-picker" id="setPicker"></div>
         <button class="lobby-start-btn" id="startBtn" onclick="startQuiz()">
@@ -1326,6 +1340,7 @@
       const baseUrl = pageUrl.substring(0, pageUrl.lastIndexOf('/'));
       const studentUrl = `${baseUrl}/student.html?room=${ROOM_CODE}`;
       document.getElementById('joinUrlText').innerText = studentUrl;
+      window.STUDENT_URL = studentUrl;
 
       new QRCode(document.getElementById('qrCanvasContainer'), {
         text: studentUrl,
@@ -1764,6 +1779,29 @@
         }
       };
       reader.readAsText(file);
+    }
+
+    /* 학생 접속 주소 복사 (메신저·클래스룸 등에 붙여넣기용) */
+    async function copyStudentUrl() {
+      const url = window.STUDENT_URL;
+      const btn = document.getElementById('copyUrlBtn');
+      let ok = false;
+      try {
+        await navigator.clipboard.writeText(url);
+        ok = true;
+      } catch (e) {
+        // 클립보드 API가 막힌 환경(file:// 등) 대비
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { ok = document.execCommand('copy'); } catch (e2) {}
+        document.body.removeChild(ta);
+      }
+      btn.innerText = ok ? '✅ 복사되었어요!' : '⚠️ 복사 실패 — 주소를 직접 선택해 복사하세요';
+      setTimeout(() => { btn.innerText = '🔗 학생 접속 주소 복사'; }, 2000);
     }
 
     function newRoom() {
