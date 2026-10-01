@@ -1,3 +1,4 @@
-frames/
+frames/*.mp4
+frames/list.txt
 typecast.config.json
 audio/
