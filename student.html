@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>《원더》 독서 골든벨 - 학생용</title>
+  <title>독서 골든벨 - 학생용</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet">
   <!-- 클라우드 실시간 동기화 MQTT 라이브러리 -->
@@ -125,6 +125,39 @@
       text-align: center;
       margin-bottom: 14px;
       outline: none;
+    }
+
+    .join-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      max-width: 300px;
+    }
+
+    .join-row .join-input {
+      min-width: 0;
+      padding: 14px 4px;
+    }
+
+    .conn-banner {
+      display: none;
+      background: #b45309;
+      color: #ffffff;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 6px;
+      flex-shrink: 0;
+    }
+
+    .switch-link {
+      margin-top: 22px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      text-decoration: underline;
+      cursor: pointer;
     }
 
     .join-btn {
@@ -336,7 +369,7 @@
   <header>
     <div class="header-user">
       <span>🔒</span>
-      <span id="headerName">원더 독서 골든벨</span>
+      <span id="headerName">독서 골든벨</span>
       <span style="font-size: 12px; color: var(--accent-yellow); margin-left: 4px;">(교사 동기화)</span>
     </div>
     <div class="header-score-badge" id="headerScoreBadge" style="display: none;">
@@ -344,15 +377,22 @@
     </div>
   </header>
 
+  <div class="conn-banner" id="connBanner">📡 연결이 끊어졌어요. 다시 연결하는 중... (점수는 안전해요)</div>
+
   <main>
     <!-- 1. 입장 화면 -->
     <div class="join-container" id="joinView">
       <div class="join-logo">🧑‍🚀</div>
-      <div class="join-title">소설 《원더》 독서 골든벨</div>
+      <div class="join-title">독서 골든벨</div>
       <div class="join-subtitle">선생님 전자칠판 실시간 연동 퀴즈</div>
 
-      <input type="text" id="pinInput" class="join-input" placeholder="방 번호 (PIN 4자리)" maxlength="6">
-      <input type="text" id="nameInput" class="join-input" placeholder="내 이름 (또는 번호와 이름)" maxlength="10">
+      <input type="tel" id="pinInput" class="join-input" placeholder="방 번호 (6자리)" maxlength="6" inputmode="numeric">
+      <div class="join-row">
+        <input type="tel" id="gradeInput" class="join-input" placeholder="학년" maxlength="1" inputmode="numeric">
+        <input type="tel" id="clsInput" class="join-input" placeholder="반" maxlength="2" inputmode="numeric">
+        <input type="tel" id="numInput" class="join-input" placeholder="번호" maxlength="2" inputmode="numeric">
+      </div>
+      <input type="text" id="nameInput" class="join-input" placeholder="이름" maxlength="10">
       <button class="join-btn" onclick="joinGame()">골든벨 입장하기 ➔</button>
     </div>
 
@@ -360,7 +400,18 @@
     <div class="lobby-container" id="lobbyView" style="display: none;">
       <div class="lobby-spinner"></div>
       <div class="lobby-msg-title" id="welcomeMsg">대기실 입장 완료!</div>
+      <div class="lobby-msg-sub" id="lobbySetTitle" style="color: var(--accent-yellow); font-weight: 800; margin-bottom: 6px;"></div>
       <div class="lobby-msg-sub">선생님이 퀴즈를 시작하기를 기다리고 있습니다.</div>
+      <button class="switch-link" onclick="switchStudent()">내가 아니에요 (다른 학생으로 입장)</button>
+    </div>
+
+    <!-- 입장 차단 화면 (이름 충돌 / 입장 잠금) -->
+    <div class="lobby-container" id="blockedView" style="display: none;">
+      <div class="join-logo">🚧</div>
+      <div class="lobby-msg-title" id="blockedTitle">입장할 수 없어요</div>
+      <div class="lobby-msg-sub" id="blockedSub"></div>
+      <button class="join-btn" style="margin-top: 20px; font-size: 18px;" onclick="retryJoin()">다시 시도</button>
+      <button class="switch-link" onclick="switchStudent()">학년·반·번호/이름 다시 입력</button>
     </div>
 
     <!-- 3. 퀴즈 풀이 화면 -->
@@ -411,13 +462,19 @@
   </main>
 
   <script>
+    const SESSION_KEY = 'wonder_student_session';
     let roomCode = '';
-    let studentId = 's_' + Math.random().toString(16).substr(2, 8);
+    let studentKey = '';
+    let studentInfo = null; // { grade, cls, num, name }
     let studentName = '';
     let mqttClient = null;
     let myChoice = null;
     let currentQIdx = -1;
     let myScore = 0;
+    let serverChoice = null; // 교사 쪽에 기록된 내 답 { qIndex, choice } (재접속 복구용)
+    let lastState = null;
+    let totalQ = 20;
+    let blockReason = null; // null | 'name' | 'locked'
 
     function triggerHaptic() {
       if (navigator.vibrate) navigator.vibrate(40);
@@ -426,76 +483,149 @@
     function initUrlParams() {
       const params = new URLSearchParams(window.location.search);
       const urlRoom = params.get('room');
-      const savedRoom = localStorage.getItem('wonder_room_code');
-      const savedName = localStorage.getItem('wonder_student_name');
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(SESSION_KEY)); } catch (e) {}
 
-      if (urlRoom) {
-        document.getElementById('pinInput').value = urlRoom;
-      } else if (savedRoom) {
-        document.getElementById('pinInput').value = savedRoom;
-      }
+      if (urlRoom) document.getElementById('pinInput').value = urlRoom;
+      else if (saved) document.getElementById('pinInput').value = saved.room;
 
-      if (savedName) {
-        document.getElementById('nameInput').value = savedName;
+      if (saved) {
+        document.getElementById('gradeInput').value = saved.grade;
+        document.getElementById('clsInput').value = saved.cls;
+        document.getElementById('numInput').value = saved.num;
+        document.getElementById('nameInput').value = saved.name;
+        // 튕겼다가 다시 열었을 때: 같은 방이면 자동으로 다시 입장
+        if (!urlRoom || urlRoom === saved.room) joinGame(true);
       }
     }
 
-    function joinGame() {
+    function joinGame(auto) {
       const pin = document.getElementById('pinInput').value.trim();
+      const grade = parseInt(document.getElementById('gradeInput').value, 10);
+      const cls = parseInt(document.getElementById('clsInput').value, 10);
+      const num = parseInt(document.getElementById('numInput').value, 10);
       const name = document.getElementById('nameInput').value.trim();
-      if (!pin || !name) {
-        alert('방 번호와 이름을 모두 입력해 주세요!');
+
+      if (!pin || !name || !(grade >= 1 && grade <= 6) || !(cls >= 1 && cls <= 30) || !(num >= 1 && num <= 60)) {
+        if (!auto) alert('방 번호, 학년·반·번호(숫자), 이름을 모두 바르게 입력해 주세요!');
         return;
       }
+      if (mqttClient) return; // 중복 연결 방지
 
       roomCode = pin;
+      studentInfo = { grade, cls, num, name };
+      studentKey = `${grade}-${cls}-${num}`;
       studentName = name;
 
       // 브라우저에 저장 (튕겼을 때 즉시 복구)
-      localStorage.setItem('wonder_room_code', roomCode);
-      localStorage.setItem('wonder_student_name', studentName);
+      try {
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ room: roomCode, grade, cls, num, name }));
+      } catch (e) {}
 
-      // MQTT 연결
+      showView('lobbyView');
+      document.getElementById('welcomeMsg').innerText = `환영합니다, ${studentName} 학생! 👋`;
+      document.getElementById('headerName').innerText = `${grade}-${cls}-${num} ${studentName}`;
+      document.getElementById('headerScoreBadge').style.display = 'block';
+
+      // MQTT 연결 (끊기면 2초마다 자동 재연결)
       mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
         clientId: 'wonder_stu_' + Math.random().toString(16).substr(2, 8),
         clean: true,
         reconnectPeriod: 2000
       });
 
+      // connect는 재연결될 때마다 다시 호출됨 → 구독과 입장 신호를 매번 다시 보냄
       mqttClient.on('connect', () => {
-        console.log('Student connected to MQTT');
+        document.getElementById('connBanner').style.display = 'none';
         mqttClient.subscribe(`wonder/${roomCode}/state`);
-        mqttClient.publish(`wonder/${roomCode}/join`, JSON.stringify({
-          name: studentName
-        }), { qos: 1 });
+        mqttClient.subscribe(`wonder/${roomCode}/to/${studentKey}`);
+        sendJoin();
+      });
 
-        showView('lobbyView');
-        document.getElementById('welcomeMsg').innerText = `환영합니다, ${studentName} 학생! 👋`;
-        document.getElementById('headerName').innerText = `${studentName} 학생`;
-        document.getElementById('headerScoreBadge').style.display = 'block';
+      mqttClient.on('offline', showOfflineBanner);
+      mqttClient.on('close', () => {
+        showOfflineBanner();
+        // 공개 브로커는 같은 clientId의 잦은 재연결을 일시 차단(Not authorized)하므로 재연결마다 새 ID 사용
+        mqttClient.options.clientId = 'wonder_stu_' + Math.random().toString(16).substr(2, 8);
+      });
+      mqttClient.on('error', () => {
+        mqttClient.options.clientId = 'wonder_stu_' + Math.random().toString(16).substr(2, 8);
       });
 
       mqttClient.on('message', (topic, message) => {
         try {
-          const state = JSON.parse(message.toString());
+          const data = JSON.parse(message.toString());
           if (topic === `wonder/${roomCode}/state`) {
-            handleTeacherState(state);
+            lastState = data;
+            handleTeacherState(data);
+          } else if (topic === `wonder/${roomCode}/to/${studentKey}`) {
+            handlePrivate(data);
           }
         } catch (e) {}
       });
     }
 
-    function handleTeacherState(state) {
-      // 내 이름으로 점수 매칭 (튕겼다가 다시 들어와도 누적 점수 유지!)
-      if (state.scores) {
-        const me = state.scores.find(s => s.name === studentName);
-        if (me) {
-          myScore = me.score;
-          document.getElementById('myScoreText').innerText = `${myScore} / 20`;
-          document.getElementById('resScore').innerText = `${myScore} / 20점`;
-        }
-      }
+    function showOfflineBanner() {
+      document.getElementById('connBanner').style.display = 'block';
+    }
 
+    function sendJoin() {
+      if (mqttClient && mqttClient.connected) {
+        mqttClient.publish(`wonder/${roomCode}/join`, JSON.stringify(studentInfo), { qos: 1 });
+      }
+    }
+
+    /* 교사가 보내준 내 점수 / 이번 문제에 낸 답으로 화면 복구 */
+    function handlePrivate(data) {
+      if (data.locked) { blockReason = 'locked'; renderBlocked(); return; }
+      if (data.name !== undefined && data.name !== studentName) { blockReason = 'name'; renderBlocked(data.name); return; }
+      blockReason = null;
+      myScore = data.score || 0;
+      renderScore();
+      serverChoice = (data.choice !== null && data.choice !== undefined) ? { qIndex: data.qIndex, choice: data.choice } : null;
+      applyServerChoice();
+      if (lastState) handleTeacherState(lastState);
+    }
+
+    function renderScore() {
+      document.getElementById('myScoreText').innerText = `${myScore} / ${totalQ}`;
+      document.getElementById('resScore').innerText = `${myScore} / ${totalQ}점`;
+    }
+
+    function renderBlocked(registeredName) {
+      document.getElementById('blockedTitle').innerText = blockReason === 'locked' ? '입장이 닫혀 있어요' : '이미 사용 중인 번호예요';
+      document.getElementById('blockedSub').innerText = blockReason === 'locked'
+        ? '선생님이 새 학생 입장을 잠갔어요. 선생님께 말씀드리세요.'
+        : '이 번호는 다른 이름으로 이미 입장했어요. 번호와 이름을 다시 확인하거나, 선생님께 말씀드리세요.';
+      showView('blockedView');
+    }
+
+    function retryJoin() { sendJoin(); }
+
+    function applyServerChoice() {
+      if (serverChoice && serverChoice.qIndex === currentQIdx && myChoice === null) {
+        myChoice = serverChoice.choice;
+        markChoice(myChoice);
+      }
+    }
+
+    function markChoice(choice) {
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById(`btnOpt${i}`).classList.toggle('selected', i === choice);
+      }
+      document.getElementById('submittedNotice').style.display = 'block';
+    }
+
+    function switchStudent() {
+      if (!confirm('다른 학생으로 다시 입장할까요?')) return;
+      try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+      location.href = location.pathname + location.search;
+    }
+
+    function handleTeacherState(state) {
+      if (blockReason) { showView('blockedView'); return; }
+      if (state.question && state.question.totalQuestions) { totalQ = state.question.totalQuestions; renderScore(); }
+      if (state.setTitle) document.getElementById('lobbySetTitle').innerText = `오늘의 퀴즈: ${state.setTitle}`;
       if (state.status === 'lobby') {
         showView('lobbyView');
         myChoice = null;
@@ -512,8 +642,10 @@
             document.getElementById(`btnOpt${i}`).classList.remove('selected');
           }
         }
+        applyServerChoice();
 
-        document.getElementById('qNumText').innerText = `Q ${String(state.question.id).padStart(2, '0')} / 20`;
+        totalQ = state.question.totalQuestions || totalQ;
+        document.getElementById('qNumText').innerText = `Q ${String(state.question.id).padStart(2, '0')} / ${totalQ}`;
         document.getElementById('studentTimer').innerText = state.timerRemaining;
         document.getElementById('qPromptText').innerText = state.question.question;
 
@@ -523,6 +655,8 @@
 
       } else if (state.status === 'answer') {
         showView('resultView');
+        if (currentQIdx !== state.currentQIndex) { currentQIdx = state.currentQIndex; myChoice = null; }
+        applyServerChoice();
         const isCorrect = (myChoice === state.question.answer);
         const icon = document.getElementById('resultIcon');
         const title = document.getElementById('resultTitle');
@@ -537,7 +671,9 @@
           icon.innerText = '😢';
           title.innerText = '아쉬워요!';
           title.style.color = '#f87171';
-          sub.innerText = `정답은 [${state.question.answer}번]이었습니다.`;
+          sub.innerText = (myChoice === null)
+            ? `답을 내지 못했어요. 정답은 [${state.question.answer}번]이었습니다.`
+            : `정답은 [${state.question.answer}번]이었습니다.`;
         }
 
       } else if (state.status === 'finished') {
@@ -550,27 +686,36 @@
     }
 
     function submitChoice(choice) {
-      if (myChoice !== null) return;
+      if (myChoice !== null || blockReason) return;
+      if (!mqttClient || !mqttClient.connected) {
+        alert('연결이 끊어져 있어요. 연결되면 다시 눌러 주세요!');
+        return;
+      }
       myChoice = choice;
       triggerHaptic();
 
       document.getElementById(`btnOpt${choice}`).classList.add('selected');
       document.getElementById('submittedNotice').style.display = 'block';
 
-      if (mqttClient && mqttClient.connected) {
-        mqttClient.publish(`wonder/${roomCode}/submit`, JSON.stringify({
-          name: studentName,
-          qIndex: currentQIdx,
-          choice: choice
-        }), { qos: 1 });
-      }
+      mqttClient.publish(`wonder/${roomCode}/submit`, JSON.stringify({
+        ...studentInfo,
+        qIndex: currentQIdx,
+        choice: choice
+      }), { qos: 1 });
     }
 
     function showView(viewId) {
-      ['joinView', 'lobbyView', 'quizView', 'resultView'].forEach(id => {
+      ['joinView', 'lobbyView', 'blockedView', 'quizView', 'resultView'].forEach(id => {
         document.getElementById(id).style.display = (id === viewId) ? 'flex' : 'none';
       });
     }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && mqttClient) {
+        if (mqttClient.connected) sendJoin();
+        else mqttClient.reconnect();
+      }
+    });
 
     window.addEventListener('DOMContentLoaded', initUrlParams);
   </script>

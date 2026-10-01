@@ -8,6 +8,7 @@
   <link href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet">
   <!-- 클라우드 실시간 동기화 MQTT & 브라우저 QR 라이브러리 -->
   <script src="https://unpkg.com/mqtt@5.3.5/dist/mqtt.min.js"></script>
+  <script src="questions.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <style>
     :root {
@@ -322,6 +323,107 @@
       content: '👤';
       font-size: 20px;
     }
+
+
+    #conflictBanner {
+      display: none;
+      position: fixed;
+      top: 76px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 900;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 90vw;
+    }
+    .conflict-row {
+      background: #7c2d12;
+      border: 2px solid #fb923c;
+      color: #fff;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 17px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    .conflict-row button {
+      background: #fff;
+      color: #7c2d12;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .set-picker {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      margin-bottom: 18px;
+    }
+    .set-btn {
+      flex: 1;
+      background: #0f172a;
+      border: 2px solid var(--border-color);
+      border-radius: 14px;
+      color: #cbd5e1;
+      padding: 10px 6px;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 16px;
+      line-height: 1.3;
+    }
+    .set-btn small { display: block; font-size: 13px; color: var(--text-muted); font-weight: 700; }
+    .set-btn.active {
+      border-color: var(--accent-yellow);
+      background: rgba(250, 204, 21, 0.15);
+      color: #ffffff;
+    }
+    .lobby-start-btn:disabled {
+      background: #334155;
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
+      color: #94a3b8;
+    }
+
+    /* 대기실: 학반별 그룹 */
+    .class-group {
+      width: 100%;
+      background: #0f172a;
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      padding: 14px 18px;
+    }
+    .class-group-title {
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--accent-yellow);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .class-group-count {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-muted);
+    }
+    .class-group-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .class-group .student-pill {
+      font-size: 20px;
+      padding: 6px 16px;
+    }
+    .class-group .student-pill::before { content: none; }
 
     @keyframes popIn {
       from { transform: scale(0.6); opacity: 0; }
@@ -833,7 +935,7 @@
     <div class="brand">
       <span class="brand-icon">🚀</span>
       <div class="brand-title">
-        소설 《원더》 독서 골든벨
+        <span id="brandTitleText">독서 골든벨</span>
         <span class="brand-badge">교사용 전자칠판</span>
         <span class="room-badge" id="roomBadge">방 코드: 생성 중...</span>
       </div>
@@ -851,6 +953,9 @@
     </div>
 
     <div class="header-right">
+      <button class="icon-btn" id="sheetStatusBadge" onclick="openSheetSettings()" style="color: #fbbf24;">
+        ☁️ 구글시트 연동 (미설정)
+      </button>
       <button class="icon-btn" onclick="openSheetModal()" style="background: #1e3a8a; border-color: #3b82f6; color: #ffffff;">
         📊 성적표 / 시트
       </button>
@@ -862,6 +967,12 @@
       </button>
       <button class="icon-btn" onclick="resetGame()" style="color: #f87171;">
         🔄 초기화
+      </button>
+      <button class="icon-btn" id="lockBtn" onclick="toggleLock()" title="켜면 새 학생은 입장할 수 없고, 이미 들어온 학생의 재접속만 허용">
+        🔓 입장 열림
+      </button>
+      <button class="icon-btn" onclick="newRoom()" style="color: #f87171;" title="명단·점수를 지우고 새 방 번호로 시작">
+        🆕 새 방
       </button>
     </div>
   </header>
@@ -878,8 +989,9 @@
           <div class="lobby-pin-text" id="joinPinText">----</div>
           <div style="font-size: 14px; color: var(--accent-blue); margin-top: 6px; word-break: break-all;" id="joinUrlText"></div>
         </div>
-        <button class="lobby-start-btn" onclick="startQuiz()">
-          <span>🚀</span> 퀴즈 시작하기
+        <div class="set-picker" id="setPicker"></div>
+        <button class="lobby-start-btn" id="startBtn" onclick="startQuiz()">
+          <span>🚀</span> <span id="startBtnText">퀴즈 시작하기</span>
         </button>
       </div>
 
@@ -971,8 +1083,8 @@
 
     <!-- 3. 명예의 전당 -->
     <div class="view-finished" id="finishedView" style="display: none;">
-      <div class="finished-title">🏆 《원더》 독서 골든벨 명예의 전당 🏆</div>
-      <div class="finished-quote">
+      <div class="finished-title" id="finishedTitleText">🏆 명예의 전당 🏆</div>
+      <div class="finished-quote" id="finishedQuote">
         "옳음과 친절함 가운데 하나를 골라야 한다면, 친절함을 선택하라." — 브라운 선생님의 격언
       </div>
 
@@ -1009,7 +1121,7 @@
       <div class="sheet-modal-header">
         <div class="sheet-modal-title">
           <span>📊</span>
-          <span>소설 《원더》 독서 골든벨 학생 성적표 (실시간 시트)</span>
+          <span id="sheetModalTitleText">학생 성적표 (실시간 시트)</span>
         </div>
         <div class="sheet-actions">
           <button class="sheet-btn btn-sheet-copy" onclick="copySheetToClipboard()">
@@ -1018,6 +1130,15 @@
           <button class="sheet-btn btn-sheet-csv" onclick="downloadSheetCSV()">
             💾 엑셀(CSV) 다운로드
           </button>
+          <button class="sheet-btn btn-sheet-copy" onclick="downloadJson()">
+            🗂️ JSON 저장
+          </button>
+          <button class="sheet-btn btn-sheet-copy" id="autoFileBtn" onclick="pickAutoSaveFile()">
+            📁 자동저장 파일 선택
+          </button>
+          <button class="sheet-btn btn-sheet-copy" onclick="document.getElementById('jsonFileInput').click()">
+            📂 JSON 불러오기
+          </button>
           <button class="sheet-btn btn-sheet-close" onclick="closeSheetModal()">
             닫기 ✕
           </button>
@@ -1025,6 +1146,8 @@
       </div>
 
       <div class="sheet-modal-body">
+        <input type="file" id="jsonFileInput" accept=".json,application/json" style="display: none;" onchange="loadJsonFile(this)">
+        <div id="fileSaveStatus" style="font-size: 14px; color: #94a3b8; margin-bottom: 10px;"></div>
         <div class="sheet-summary-bar">
           <div class="summary-card">
             <span>참여 학생:</span>
@@ -1045,8 +1168,9 @@
             <thead>
               <tr id="sheetHeaderRow">
                 <th style="width: 60px;">순위</th>
-                <th class="col-name">학생 이름</th>
-                <th style="width: 120px;">총점 (20점)</th>
+                <th style="width: 110px;">학반번호</th>
+                <th class="col-name">이름</th>
+                <th style="width: 120px;">총점</th>
                 <!-- Q1 ~ Q20 헤더 동적 생성 -->
               </tr>
             </thead>
@@ -1055,6 +1179,36 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="conflictBanner"></div>
+
+  <!-- 구글시트 연동 설정 모달 -->
+  <div class="sheet-modal-backdrop" id="sheetSettingsBackdrop">
+    <div class="sheet-modal" style="max-width: 640px; height: auto;">
+      <div class="sheet-modal-header">
+        <div class="sheet-modal-title"><span>☁️</span><span>구글시트 자동 저장 설정</span></div>
+        <div class="sheet-actions">
+          <button class="sheet-btn btn-sheet-close" onclick="closeSheetSettings()">닫기 ✕</button>
+        </div>
+      </div>
+      <div class="sheet-modal-body" style="line-height: 1.6;">
+        <p style="color: #94a3b8; font-size: 15px; margin-bottom: 12px;">
+          내 구글시트에서 만든 <b style="color:#fff;">Apps Script 웹앱 주소</b>(…/exec)를 붙여넣으세요.<br>
+          만드는 법은 <b style="color:#fff;">구글시트_연동_방법.md</b>를 보세요. 한 번 저장하면 이 브라우저에 기억됩니다.
+        </p>
+        <input type="text" id="sheetUrlInput" placeholder="https://script.google.com/macros/s/.../exec"
+          style="width: 100%; padding: 12px; border-radius: 10px; border: 2px solid #475569; background: #0f172a; color: #fff; font-size: 15px;">
+        <div style="display: flex; gap: 10px; margin-top: 14px; align-items: center;">
+          <button class="sheet-btn btn-sheet-copy" onclick="testSheetUrl()">🔌 연결 테스트</button>
+          <button class="sheet-btn btn-sheet-csv" onclick="saveSheetUrl()">💾 저장</button>
+          <span id="sheetTestResult" style="font-size: 15px; font-weight: 700;"></span>
+        </div>
+        <p style="color: #64748b; font-size: 13px; margin-top: 14px;">
+          저장 시점: 학생 입장 때 · 정답 공개 때마다 · 골든벨 종료 때. 같은 회차는 한 번에 덮어써서 시트에 중복 행이 쌓이지 않습니다.
+        </p>
       </div>
     </div>
   </div>
@@ -1097,23 +1251,70 @@
     }
 
     /* ================= MQTT 클라우드 통신 엔진 ================= */
-    const ROOM_CODE = String(Math.floor(1000 + Math.random() * 9000));
+    const SAVE_KEY = 'wonder_teacher_session';
+    const SHEET_URL_KEY = 'wonder_sheet_url';
+
+    function loadSavedSession() {
+      try {
+        const sv = JSON.parse(localStorage.getItem(SAVE_KEY));
+        if (sv && sv.roomCode && (Date.now() - sv.savedAt) < 12 * 3600 * 1000) return sv;
+      } catch (e) {}
+      return null;
+    }
+
+    let savedSession = loadSavedSession();
+    if (savedSession) {
+      const gs = savedSession.gameState || {};
+      const n = Object.keys(gs.students || {}).length;
+      if (n > 0 || (gs.status && gs.status !== 'lobby')) {
+        const resume = confirm(`이전에 진행하던 골든벨 기록이 있어요.\n(방 ${savedSession.roomCode} · 학생 ${n}명)\n\n[확인] 이어서 진행\n[취소] 새 방으로 처음부터 시작`);
+        if (!resume) {
+          try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+          savedSession = null;
+        }
+      } else {
+        savedSession = null;
+      }
+    }
+    const ROOM_CODE = savedSession ? savedSession.roomCode : String(Math.floor(100000 + Math.random() * 900000));
+    const SESSION_ID = savedSession ? savedSession.sessionId : `${new Date().toLocaleDateString('sv-SE')}_${ROOM_CODE}`;
     let mqttClient = null;
     let questions = [];
 
     let gameState = {
+      setId: 'wonder', // 선택된 퀴즈 세트
       status: 'lobby', // lobby, question, answer, finished
+      locked: false, // true면 새 학생 입장 차단 (기존 학생 재접속은 허용)
+      nameConflicts: {}, // key -> 새로 들어오려던 이름 (교사 확인 대기)
       currentQIndex: 0,
       showHint: false,
       timerTotal: 30,
       timerRemaining: 30,
       timerActive: false,
-      students: {}, // name -> { name, score, streak, answers: { 0: true/false } }
-      currentAnswers: {}, // name -> choice
+      students: {}, // key("학년-반-번호") -> { key, grade, cls, num, name, score, streak, answers: { 0: {choice, isCorrect} } }
+      currentAnswers: {}, // key -> choice
       choiceCounts: { 1: 0, 2: 0, 3: 0, 4: 0 }
     };
 
+    if (savedSession && savedSession.gameState) {
+      Object.assign(gameState, savedSession.gameState);
+      gameState.timerActive = false; // 새로고침 후에는 교사가 [P]로 재개
+    }
+
     let timerInterval = null;
+
+    /* 교사 화면을 새로고침/종료해도 명단·점수가 복구되도록 브라우저에 저장 */
+    function persistSession() {
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify({
+          roomCode: ROOM_CODE, sessionId: SESSION_ID, savedAt: Date.now(), gameState
+        }));
+      } catch (e) {}
+    }
+
+    function esc(str) {
+      return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
 
     async function initGame() {
       // 1. 방 코드 UI 설정
@@ -1121,7 +1322,8 @@
       document.getElementById('joinPinText').innerText = ROOM_CODE;
 
       // 2. 학생 접속 URL 구성 및 QR 생성
-      const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
+      const pageUrl = window.location.href.split('?')[0].split('#')[0];
+      const baseUrl = pageUrl.substring(0, pageUrl.lastIndexOf('/'));
       const studentUrl = `${baseUrl}/student.html?room=${ROOM_CODE}`;
       document.getElementById('joinUrlText').innerText = studentUrl;
 
@@ -1134,14 +1336,18 @@
         correctLevel: QRCode.CorrectLevel.M
       });
 
-      // 3. 문제 데이터 로드
-      try {
-        const res = await fetch('questions.json');
-        questions = await res.json();
-        setupSheetHeaders();
-      } catch (e) {
-        console.error('Failed to load questions.json', e);
+      // 3. 문제 데이터 로드 (questions.js 에 들어 있음)
+      if (!window.QUESTION_SETS || !window.QUESTION_SETS.length) {
+        alert('questions.js 를 불러오지 못했습니다. teacher.html 과 같은 폴더에 questions.js 가 있는지 확인하세요.');
+        return;
       }
+      applySet(gameState.setId, false);
+
+      // 복구된 세션이 있으면 화면 반영
+      updateUI();
+      updateSheetStatusBadge();
+      updateLockButton();
+      renderConflicts();
 
       // 4. MQTT 연결 (EMQX 무료 공개 WSS 브로커)
       mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
@@ -1155,7 +1361,13 @@
         mqttClient.subscribe(`wonder/${ROOM_CODE}/join`);
         mqttClient.subscribe(`wonder/${ROOM_CODE}/submit`);
         broadcastState();
+        Object.keys(gameState.students).forEach(sendPrivate);
       });
+
+      // 공개 브로커의 clientId 일시 차단(Not authorized)을 피하기 위해 재연결마다 새 ID 사용
+      const rotateId = () => { mqttClient.options.clientId = 'wonder_teacher_' + Math.random().toString(16).substr(2, 8); };
+      mqttClient.on('close', rotateId);
+      mqttClient.on('error', rotateId);
 
       mqttClient.on('message', (topic, message) => {
         try {
@@ -1181,53 +1393,143 @@
       }, 1000);
     }
 
-    /* 학생 입장 처리 (튕겼을 때 같은 이름으로 들어오면 기존 점수 및 기록 유지!) */
-    function handleStudentJoin(data) {
-      const studentName = (data.name || '').trim();
-      if (!studentName) return;
+    /* 학생 입력(학년/반/번호/이름) 검증 → 식별 키 생성. 잘못된 값이면 null */
+    function parseStudent(data) {
+      const grade = parseInt(data.grade, 10);
+      const cls = parseInt(data.cls, 10);
+      const num = parseInt(data.num, 10);
+      const name = String(data.name || '').trim().slice(0, 10);
+      if (!(grade >= 1 && grade <= 6) || !(cls >= 1 && cls <= 30) || !(num >= 1 && num <= 60) || !name) return null;
+      return { key: `${grade}-${cls}-${num}`, grade, cls, num, name };
+    }
 
-      if (!gameState.students[studentName]) {
-        // 최초 등록
-        gameState.students[studentName] = {
-          name: studentName,
+    /* 학생 입장 처리 (같은 학반번호로 다시 들어오면 기존 점수 및 기록 그대로 이어짐!) */
+    function handleStudentJoin(data) {
+      const info = parseStudent(data);
+      if (!info) return;
+
+      const existing = gameState.students[info.key];
+      if (!existing) {
+        if (gameState.locked) { sendLocked(info.key); return; } // 잠금 중: 새 학생 입장 차단
+        gameState.students[info.key] = {
+          ...info,
           score: 0,
           streak: 0,
           answers: {} // { 0: { choice: 3, isCorrect: true } }
         };
+      } else if (existing.name !== info.name) {
+        // 같은 학반번호에 다른 이름: 기존 학생 기록을 보호하고 교사에게 확인 요청
+        gameState.nameConflicts[info.key] = info.name;
+        renderConflicts();
       } else {
-        // 튕겼다가 재접속한 경우: 기존 score와 answers는 그대로 보존됨!
-        console.log(`[재접속 확인] ${studentName} 학생 재입장 - 누적 점수 ${gameState.students[studentName].score}점 유지`);
+        console.log(`[재접속 확인] ${info.key} ${info.name} 재입장 - 누적 점수 ${existing.score}점 유지`);
       }
 
+      sendPrivate(info.key);
       broadcastState();
       updateUI();
+      scheduleSheetSync();
+    }
+
+    function sendLocked(key) {
+      if (!mqttClient || !mqttClient.connected) return;
+      mqttClient.publish(`wonder/${ROOM_CODE}/to/${key}`, JSON.stringify({ locked: true }), { qos: 1 });
+    }
+
+    /* ---- 입장 잠금 ---- */
+    function toggleLock() {
+      gameState.locked = !gameState.locked;
+      updateLockButton();
+      broadcastState();
+    }
+
+    function updateLockButton() {
+      const b = document.getElementById('lockBtn');
+      if (!b) return;
+      b.innerText = gameState.locked ? '🔒 입장 잠김' : '🔓 입장 열림';
+      b.style.color = gameState.locked ? '#fbbf24' : '#4ade80';
+    }
+
+    /* ---- 이름 충돌 확인 ---- */
+    function renderConflicts() {
+      const box = document.getElementById('conflictBanner');
+      const keys = Object.keys(gameState.nameConflicts);
+      box.innerHTML = '';
+      box.style.display = keys.length ? 'flex' : 'none';
+      keys.forEach(k => {
+        const st = gameState.students[k];
+        if (!st) { delete gameState.nameConflicts[k]; return; }
+        const row = document.createElement('div');
+        row.className = 'conflict-row';
+        const msg = document.createElement('span');
+        msg.innerText = `⚠️ ${k} 이름 충돌 — 등록된 이름 "${st.name}" / 새로 입력 "${gameState.nameConflicts[k]}"`;
+        const yes = document.createElement('button');
+        yes.innerText = '새 이름으로 바꾸기';
+        yes.onclick = () => resolveConflict(k, true);
+        const no = document.createElement('button');
+        no.innerText = '기존 유지';
+        no.onclick = () => resolveConflict(k, false);
+        row.append(msg, yes, no);
+        box.appendChild(row);
+      });
+    }
+
+    function resolveConflict(key, accept) {
+      const st = gameState.students[key];
+      if (st && accept) st.name = gameState.nameConflicts[key];
+      delete gameState.nameConflicts[key];
+      renderConflicts();
+      sendPrivate(key);
+      broadcastState();
+      updateUI();
+      scheduleSheetSync();
     }
 
     function handleStudentSubmit(data) {
       if (gameState.status !== 'question') return;
       if (data.qIndex !== gameState.currentQIndex) return;
 
-      const studentName = (data.name || '').trim();
-      if (!studentName) return;
+      const info = parseStudent(data);
+      if (!info || !gameState.students[info.key]) return;
+      if (gameState.students[info.key].name !== info.name) return; // 이름 충돌 중인 기기의 제출은 무시
+      if (gameState.currentAnswers[info.key] !== undefined) return; // 첫 제출만 인정 (재접속 후 답 바꾸기 방지)
 
-      gameState.currentAnswers[studentName] = data.choice;
-      
+      const choice = parseInt(data.choice, 10);
+      if (!(choice >= 1 && choice <= 4)) return;
+      gameState.currentAnswers[info.key] = choice;
+
       // 집계 업데이트
       gameState.choiceCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
-      Object.values(gameState.currentAnswers).forEach(choice => {
-        if (gameState.choiceCounts[choice] !== undefined) gameState.choiceCounts[choice]++;
+      Object.values(gameState.currentAnswers).forEach(c => {
+        if (gameState.choiceCounts[c] !== undefined) gameState.choiceCounts[c]++;
       });
 
+      sendPrivate(info.key);
       broadcastState();
       updateUI();
     }
 
+    /* 학생 1명에게만 보내는 개인 메시지: 내 점수 + 이번 문제에 낸 답 (재접속 복구용) */
+    function sendPrivate(key) {
+      if (!mqttClient || !mqttClient.connected) return;
+      const st = gameState.students[key];
+      if (!st) return;
+      mqttClient.publish(`wonder/${ROOM_CODE}/to/${key}`, JSON.stringify({
+        name: st.name,
+        score: st.score,
+        qIndex: gameState.currentQIndex,
+        choice: gameState.currentAnswers[key] ?? null
+      }), { qos: 1, retain: true });
+    }
+
     function broadcastState() {
+      persistSession();
       if (!mqttClient || !mqttClient.connected) return;
 
       const currentQ = questions[gameState.currentQIndex] || null;
       const payload = {
         status: gameState.status,
+        setTitle: getSet(gameState.setId).title,
         roomCode: ROOM_CODE,
         currentQIndex: gameState.currentQIndex,
         timerTotal: gameState.timerTotal,
@@ -1243,11 +1545,231 @@
           hint: currentQ.hint,
           explanation: (gameState.status === 'answer') ? currentQ.explanation : null,
           totalQuestions: questions.length
-        } : null,
-        scores: Object.values(gameState.students).map(s => ({ name: s.name, score: s.score }))
+        } : null
       };
 
-      mqttClient.publish(`wonder/${ROOM_CODE}/state`, JSON.stringify(payload), { qos: 1 });
+      // retain: 중간에 튕겨서 다시 들어온 학생도 구독 즉시 현재 화면 상태를 받음
+      mqttClient.publish(`wonder/${ROOM_CODE}/state`, JSON.stringify(payload), { qos: 1, retain: true });
+    }
+
+    /* ================= 구글 시트 연동 (Apps Script 웹앱) ================= */
+    let sheetTimer = null;
+    let sheetSyncState = ''; // '', 'sending', 'ok', 'fail'
+    let sheetLastTime = '';
+
+    function getSheetUrl() {
+      try { return localStorage.getItem(SHEET_URL_KEY) || ''; } catch (e) { return ''; }
+    }
+
+    function scheduleSheetSync() {
+      scheduleFileSave();
+      if (!getSheetUrl()) return;
+      clearTimeout(sheetTimer);
+      sheetTimer = setTimeout(syncToSheet, 1500); // 짧은 시간에 몰린 변경은 한 번에 전송
+    }
+
+    function buildSheetPayload() {
+      const list = Object.values(gameState.students).sort((a, b) => a.grade - b.grade || a.cls - b.cls || a.num - b.num);
+      return {
+        session: `${SESSION_ID}_${getSet(gameState.setId).short}`,
+        quiz: getSet(gameState.setId).title,
+        questionCount: questions.length,
+        students: list.map(s => ({
+          grade: s.grade, cls: s.cls, num: s.num, name: s.name, score: s.score,
+          answers: questions.map((_, i) => s.answers[i] === undefined ? '-' : (s.answers[i].isCorrect ? 'O' : 'X'))
+        }))
+      };
+    }
+
+    async function syncToSheet() {
+      const url = getSheetUrl();
+      if (!url) return;
+      sheetSyncState = 'sending';
+      updateSheetStatusBadge();
+      try {
+        // Apps Script는 CORS 응답을 못 읽으므로 no-cors로 전송 (전송 성공 여부만 확인 가능)
+        await fetch(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(buildSheetPayload())
+        });
+        sheetSyncState = 'ok';
+        sheetLastTime = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      } catch (e) {
+        sheetSyncState = 'fail';
+        clearTimeout(sheetTimer);
+        sheetTimer = setTimeout(syncToSheet, 10000); // 네트워크 오류 시 10초 후 재시도
+      }
+      updateSheetStatusBadge();
+    }
+
+    function updateSheetStatusBadge() {
+      const el = document.getElementById('sheetStatusBadge');
+      if (!el) return;
+      if (!getSheetUrl()) { el.innerText = '☁️ 구글시트 연동 (미설정)'; el.style.color = '#fbbf24'; return; }
+      if (sheetSyncState === 'sending') { el.innerText = '☁️ 시트 저장 중...'; el.style.color = '#38bdf8'; }
+      else if (sheetSyncState === 'fail') { el.innerText = '☁️ 시트 저장 실패 (재시도 중)'; el.style.color = '#f87171'; }
+      else if (sheetSyncState === 'ok') { el.innerText = `☁️ 시트 저장됨 ${sheetLastTime}`; el.style.color = '#4ade80'; }
+      else { el.innerText = '☁️ 구글시트 연동됨'; el.style.color = '#4ade80'; }
+    }
+
+    function openSheetSettings() {
+      document.getElementById('sheetUrlInput').value = getSheetUrl();
+      document.getElementById('sheetTestResult').innerText = '';
+      document.getElementById('sheetSettingsBackdrop').style.display = 'flex';
+    }
+
+    function closeSheetSettings() {
+      document.getElementById('sheetSettingsBackdrop').style.display = 'none';
+    }
+
+    function saveSheetUrl() {
+      const url = document.getElementById('sheetUrlInput').value.trim();
+      if (url && !/^https:\/\/script\.google\.com\/.+\/exec/.test(url)) {
+        alert('Apps Script 웹앱 주소(https://script.google.com/.../exec)를 붙여넣어 주세요.');
+        return;
+      }
+      try { localStorage.setItem(SHEET_URL_KEY, url); } catch (e) {}
+      closeSheetSettings();
+      updateSheetStatusBadge();
+      if (url) syncToSheet(); // 저장 즉시 현재 명단 전송
+    }
+
+    async function testSheetUrl() {
+      const url = document.getElementById('sheetUrlInput').value.trim();
+      const out = document.getElementById('sheetTestResult');
+      if (!url) { out.innerText = '주소를 먼저 입력하세요.'; return; }
+      out.innerText = '확인 중...';
+      try {
+        const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'ping=1');
+        const j = await res.json();
+        out.innerText = j.ok ? '✅ 연결 정상! [저장]을 누르세요.' : '⚠️ 응답이 올바르지 않습니다.';
+      } catch (e) {
+        out.innerText = '❌ 연결 실패: 배포 시 "액세스 권한: 모든 사용자"로 했는지 확인하세요.';
+      }
+    }
+
+    /* ================= JSON 저장 / 자동 저장 / 불러오기 ================= */
+    let fileHandle = null;
+    let fileTimer = null;
+
+    function buildBackup() {
+      const set = getSet(gameState.setId);
+      return {
+        app: 'wonder-goldenbell',
+        version: 1,
+        savedAt: new Date().toISOString(),
+        roomCode: ROOM_CODE,
+        sessionId: SESSION_ID,
+        quiz: set.title,
+        questionCount: questions.length,
+        // 사람이 보기 쉬운 요약 (반·번호순)
+        results: buildSheetPayload().students,
+        // 복구용 전체 상태
+        gameState: gameState
+      };
+    }
+
+    function backupFileName() {
+      return `${getSet(gameState.setId).short}_골든벨_결과_${new Date().toLocaleDateString('sv-SE')}.json`;
+    }
+
+    function downloadJson() {
+      const blob = new Blob([JSON.stringify(buildBackup(), null, 1)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = backupFileName();
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function setFileStatus(msg, color) {
+      const el = document.getElementById('fileSaveStatus');
+      if (el) { el.innerText = msg; el.style.color = color || '#94a3b8'; }
+    }
+
+    async function pickAutoSaveFile() {
+      if (!window.showSaveFilePicker) {
+        alert('이 기능은 Chrome / Edge 브라우저에서만 쓸 수 있어요. 대신 [JSON 저장] 버튼으로 내려받으세요.');
+        return;
+      }
+      try {
+        fileHandle = await window.showSaveFilePicker({
+          suggestedName: backupFileName(),
+          types: [{ description: 'JSON 파일', accept: { 'application/json': ['.json'] } }]
+        });
+      } catch (e) {
+        return; // 선택 취소
+      }
+      await writeAutoSaveFile();
+    }
+
+    function scheduleFileSave() {
+      if (!fileHandle) return;
+      clearTimeout(fileTimer);
+      fileTimer = setTimeout(writeAutoSaveFile, 1000);
+    }
+
+    async function writeAutoSaveFile() {
+      if (!fileHandle) return;
+      try {
+        const w = await fileHandle.createWritable();
+        await w.write(JSON.stringify(buildBackup(), null, 1));
+        await w.close();
+        const t = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setFileStatus(`📁 자동저장 중: ${fileHandle.name} (마지막 저장 ${t})`, '#4ade80');
+        const b = document.getElementById('autoFileBtn');
+        if (b) b.innerText = '📁 자동저장 켜짐';
+      } catch (e) {
+        setFileStatus('⚠️ 자동저장 실패 — 파일을 다시 선택해 주세요.', '#f87171');
+        fileHandle = null;
+      }
+    }
+
+    function loadJsonFile(input) {
+      const file = input.files && input.files[0];
+      input.value = '';
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (data.app !== 'wonder-goldenbell' || !data.gameState || !data.gameState.students) throw new Error('형식 오류');
+          const n = Object.keys(data.gameState.students).length;
+          if (!confirm(`「${data.quiz}」 기록을 불러올까요?
+학생 ${n}명 · 저장 시각 ${new Date(data.savedAt).toLocaleString('ko-KR')}
+
+지금 화면의 명단·점수는 이 기록으로 바뀝니다.`)) return;
+
+          const keepLocked = gameState.locked;
+          Object.assign(gameState, data.gameState);
+          gameState.timerActive = false;
+          gameState.locked = keepLocked;
+          gameState.nameConflicts = {};
+          applySet(gameState.setId, false);
+          renderConflicts();
+          updateLockButton();
+          broadcastState();
+          Object.keys(gameState.students).forEach(sendPrivate);
+          renderSheetTable();
+          scheduleSheetSync();
+          alert(`✅ 학생 ${n}명의 기록을 불러왔습니다.
+학생들이 같은 학년·반·번호로 다시 들어오면 점수가 이어집니다.`);
+        } catch (e) {
+          alert('불러오지 못했어요. 이 앱에서 저장한 JSON 파일이 맞는지 확인하세요.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function newRoom() {
+      if (!confirm('⚠️ 새 방을 만들면 현재 접속 명단과 점수가 모두 사라지고 방 번호가 바뀝니다.\n(구글시트에 이미 저장된 기록은 그대로 남습니다)\n\n계속할까요?')) return;
+      try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+      location.reload();
     }
 
     /* ================= UI 렌더링 ================= */
@@ -1271,14 +1793,43 @@
 
         const studentList = Object.values(state.students);
         document.getElementById('lobbyStudentCount').innerText = `${studentList.length}명`;
+        const startBtn = document.getElementById('startBtn');
+        startBtn.disabled = studentList.length === 0;
+        document.getElementById('startBtnText').innerText = studentList.length === 0
+          ? '학생이 입장하면 시작할 수 있어요'
+          : `${studentList.length}명 입장 · 퀴즈 시작하기`;
         const grid = document.getElementById('studentGrid');
         grid.innerHTML = '';
-        studentList.forEach(s => {
-          const pill = document.createElement('div');
-          pill.className = 'student-pill';
-          pill.innerText = s.name;
-          grid.appendChild(pill);
-        });
+
+        // 학년-반별로 묶고, 반 → 번호 순 정렬 (화면에는 번호만 표시)
+        const groups = {};
+        studentList.forEach(s => { (groups[`${s.grade}-${s.cls}`] = groups[`${s.grade}-${s.cls}`] || []).push(s); });
+        Object.keys(groups)
+          .sort((a, b) => { const [ag, ac] = a.split('-').map(Number), [bg, bc] = b.split('-').map(Number); return ag - bg || ac - bc; })
+          .forEach(gk => {
+            const members = groups[gk].sort((a, b) => a.num - b.num);
+            const [g, c] = gk.split('-');
+            const box = document.createElement('div');
+            box.className = 'class-group';
+            const title = document.createElement('div');
+            title.className = 'class-group-title';
+            title.innerText = `${g}학년 ${c}반`;
+            const cnt = document.createElement('span');
+            cnt.className = 'class-group-count';
+            cnt.innerText = `${members.length}명`;
+            title.appendChild(cnt);
+            box.appendChild(title);
+            const row = document.createElement('div');
+            row.className = 'class-group-pills';
+            members.forEach(m => {
+              const pill = document.createElement('div');
+              pill.className = 'student-pill';
+              pill.innerText = `${m.num}번`;
+              row.appendChild(pill);
+            });
+            box.appendChild(row);
+            grid.appendChild(box);
+          });
 
       } else if (state.status === 'question' || state.status === 'answer') {
         lobbyView.style.display = 'none';
@@ -1413,7 +1964,53 @@
     }
 
     /* ================= 제어 함수 ================= */
+    /* ---- 퀴즈 세트 선택 ---- */
+    function getSet(id) {
+      return window.QUESTION_SETS.find(s => s.id === id) || window.QUESTION_SETS[0];
+    }
+
+    function applySet(id, reset) {
+      const set = getSet(id);
+      gameState.setId = set.id;
+      questions = set.questions;
+      if (reset) {
+        gameState.currentQIndex = 0;
+        gameState.currentAnswers = {};
+        gameState.choiceCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+      }
+      document.getElementById('brandTitleText').innerText = set.title;
+      document.title = `${set.title} - 전자칠판 교사용`;
+      document.getElementById('finishedTitleText').innerText = `🏆 ${set.title} 명예의 전당 🏆`;
+      document.getElementById('finishedQuote').style.display = (set.id === 'wonder') ? '' : 'none';
+      document.getElementById('sheetModalTitleText').innerText = `${set.title} 학생 성적표 (실시간 시트)`;
+      setupSheetHeaders();
+      renderSetPicker();
+      updateUI();
+    }
+
+    function selectSet(id) {
+      if (gameState.status !== 'lobby' || id === gameState.setId) return;
+      applySet(id, true);
+      broadcastState();
+      scheduleSheetSync();
+    }
+
+    function renderSetPicker() {
+      const box = document.getElementById('setPicker');
+      box.innerHTML = '';
+      window.QUESTION_SETS.forEach(s => {
+        const b = document.createElement('button');
+        b.className = 'set-btn' + (s.id === gameState.setId ? ' active' : '');
+        b.innerHTML = `${s.icon}<br>${esc(s.short)}<small>${s.questions.length}문제</small>`;
+        b.onclick = () => selectSet(s.id);
+        box.appendChild(b);
+      });
+    }
+
     function startQuiz() {
+      const count = Object.keys(gameState.students).length;
+      if (count === 0) { alert('아직 입장한 학생이 없어요. 학생들이 들어온 뒤 시작하세요.'); return; }
+      if (!confirm(`「${getSet(gameState.setId).title}」 ${questions.length}문제\n현재 ${count}명이 입장했습니다. 시작할까요?`)) return;
       initAudio();
       gameState.status = 'question';
       gameState.currentQIndex = 0;
@@ -1423,9 +2020,11 @@
       gameState.showHint = false;
       gameState.currentAnswers = {};
       gameState.choiceCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
-      Object.values(gameState.students).forEach(s => { s.score = 0; s.streak = 0; });
+      Object.values(gameState.students).forEach(s => { s.score = 0; s.streak = 0; s.answers = {}; });
       broadcastState();
+      Object.keys(gameState.students).forEach(sendPrivate);
       updateUI();
+      scheduleSheetSync();
     }
 
     function toggleHint() {
@@ -1447,34 +2046,37 @@
 
       // 1문제당 1점 채점 & 문제별 정오답 기록
       const correct = questions[gameState.currentQIndex].answer;
-      Object.entries(gameState.currentAnswers).forEach(([studentName, choice]) => {
-        if (gameState.students[studentName]) {
+      Object.entries(gameState.currentAnswers).forEach(([studentKey, choice]) => {
+        const st = gameState.students[studentKey];
+        if (st) {
           const isCorrect = (choice === correct);
           // 문제별 결과 저장
-          gameState.students[studentName].answers[gameState.currentQIndex] = {
+          st.answers[gameState.currentQIndex] = {
             choice: choice,
             isCorrect: isCorrect
           };
 
           if (isCorrect) {
-            gameState.students[studentName].score += 1; // 1문제당 1점!
-            gameState.students[studentName].streak++;
+            st.score += 1; // 1문제당 1점!
+            st.streak++;
           } else {
-            gameState.students[studentName].streak = 0;
+            st.streak = 0;
           }
         }
       });
 
       broadcastState();
+      Object.keys(gameState.students).forEach(sendPrivate);
       updateUI();
       renderSheetTable();
+      scheduleSheetSync();
     }
 
     /* ================= 실시간 성적표 (시트) 로직 ================= */
     function setupSheetHeaders() {
       const headerRow = document.getElementById('sheetHeaderRow');
       // 기존 Q 컬럼이 있다면 제거 후 다시 생성
-      while (headerRow.children.length > 3) {
+      while (headerRow.children.length > 4) {
         headerRow.removeChild(headerRow.lastChild);
       }
       for (let i = 1; i <= questions.length; i++) {
@@ -1499,10 +2101,10 @@
       const studentCount = students.length;
       document.getElementById('summaryStudentCount').innerText = `${studentCount}명`;
 
-      // 반 평균 점수 계산 (20점 만점)
+      // 반 평균 점수 계산
       const totalScore = students.reduce((acc, s) => acc + s.score, 0);
       const avg = studentCount > 0 ? (totalScore / studentCount).toFixed(1) : 0;
-      document.getElementById('summaryAvgScore').innerText = `${avg} / 20점`;
+      document.getElementById('summaryAvgScore').innerText = `${avg} / ${questions.length}점`;
       document.getElementById('summaryProgress').innerText = `${gameState.currentQIndex + (gameState.status === 'answer' ? 1 : 0)} / ${questions.length}문제`;
 
       // 점수 높은 순으로 정렬
@@ -1513,7 +2115,7 @@
 
       if (sorted.length === 0) {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td colspan="${3 + questions.length}" style="padding: 30px; color: #64748b;">아직 접속한 학생이 없습니다.</td>`;
+        tr.innerHTML = `<td colspan="${4 + questions.length}" style="padding: 30px; color: #64748b;">아직 접속한 학생이 없습니다.</td>`;
         tbody.appendChild(tr);
         return;
       }
@@ -1522,8 +2124,9 @@
         const tr = document.createElement('tr');
         let html = `
           <td style="font-weight: 800; color: #94a3b8;">${idx + 1}</td>
-          <td class="col-name">${s.name}</td>
-          <td><span class="score-chip">${s.score}</span> / 20</td>
+          <td style="font-weight: 800;">${s.grade}-${s.cls}-${s.num}</td>
+          <td class="col-name">${esc(s.name)}</td>
+          <td><span class="score-chip">${s.score}</span> / ${questions.length}</td>
         `;
 
         for (let qIdx = 0; qIdx < questions.length; qIdx++) {
@@ -1544,21 +2147,21 @@
 
     /* 클립보드 복사 (구글 스프레드시트 / 한글 / 엑셀에 바로 Ctrl+V) */
     function copySheetToClipboard() {
-      const students = Object.values(gameState.students).sort((a, b) => b.score - a.score);
+      const students = Object.values(gameState.students).sort((a, b) => a.grade - b.grade || a.cls - b.cls || a.num - b.num);
       if (students.length === 0) {
         alert('복사할 학생 데이터가 없습니다.');
         return;
       }
 
       // TSV (탭 구분 텍스트) 생성
-      let tsv = '순위\t학생이름\t총점(20점만점)';
+      let tsv = `학년\t반\t번호\t이름\t총점(${questions.length}점만점)`;
       for (let i = 1; i <= questions.length; i++) {
         tsv += `\tQ${i}`;
       }
       tsv += '\n';
 
       students.forEach((s, idx) => {
-        tsv += `${idx + 1}\t${s.name}\t${s.score}`;
+        tsv += `${s.grade}\t${s.cls}\t${s.num}\t${s.name}\t${s.score}`;
         for (let qIdx = 0; qIdx < questions.length; qIdx++) {
           const ans = s.answers[qIdx];
           const val = (ans === undefined) ? '-' : (ans.isCorrect ? 'O' : 'X');
@@ -1576,20 +2179,20 @@
 
     /* UTF-8 BOM CSV 파일 다운로드 */
     function downloadSheetCSV() {
-      const students = Object.values(gameState.students).sort((a, b) => b.score - a.score);
+      const students = Object.values(gameState.students).sort((a, b) => a.grade - b.grade || a.cls - b.cls || a.num - b.num);
       if (students.length === 0) {
         alert('저장할 학생 데이터가 없습니다.');
         return;
       }
 
-      let csv = '순위,학생이름,총점(20점)';
+      let csv = `학년,반,번호,이름,총점(${questions.length}점)`;
       for (let i = 1; i <= questions.length; i++) {
         csv += `,Q${i}`;
       }
       csv += '\r\n';
 
       students.forEach((s, idx) => {
-        csv += `${idx + 1},"${s.name}",${s.score}`;
+        csv += `${s.grade},${s.cls},${s.num},"${s.name.replace(/"/g, '""')}",${s.score}`;
         for (let qIdx = 0; qIdx < questions.length; qIdx++) {
           const ans = s.answers[qIdx];
           const val = (ans === undefined) ? '-' : (ans.isCorrect ? 'O' : 'X');
@@ -1603,7 +2206,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `원더_독서골든벨_학생성적표_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `${getSet(gameState.setId).short}_독서골든벨_학생성적표_${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1625,7 +2228,9 @@
         gameState.timerActive = false;
       }
       broadcastState();
+      Object.keys(gameState.students).forEach(sendPrivate);
       updateUI();
+      if (gameState.status === 'finished') scheduleSheetSync();
     }
 
     function resetGame() {
