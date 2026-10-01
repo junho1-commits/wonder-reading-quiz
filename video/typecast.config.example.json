@@ -1,0 +1,10 @@
+{
+  "api_key": "여기에_타입캐스트_API_키",
+  "voice_id": "여기에_타입캐스트_보이스_ID",
+  "model": "ssfm-v21",
+  "language": "kor",
+  "audio_format": "mp3",
+  "audio_tempo": 1.0,
+  "script_file": "typecast_대본.txt",
+  "output_dir": "audio"
+}
