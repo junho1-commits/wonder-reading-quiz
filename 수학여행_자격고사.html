@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2026학년도 모덕초 6학년 수학여행 자격 고사</title>
+  <!-- 귀여운 폰트: 눈누/구글폰트 Jua(주아체), Gaegu(개구체), Gowun Dodum -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
+  <style>
+    /* 기본 리셋 및 인쇄 규격 */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #f3f4f6;
+      font-family: 'Gowun Dodum', sans-serif;
+      color: #2d3748;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 화면 조작용 플로팅 바 */
+    .toolbar {
+      position: fixed;
+      top: 15px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      gap: 10px;
+      background: white;
+      padding: 10px 16px;
+      border-radius: 30px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn {
+      font-family: 'Jua', sans-serif;
+      font-size: 16px;
+      padding: 8px 18px;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-print {
+      background: #4f46e5;
+      color: white;
+    }
+    .btn-print:hover {
+      background: #4338ca;
+      transform: translateY(-1px);
+    }
+
+    .btn-answer {
+      background: #f59e0b;
+      color: white;
+    }
+    .btn-answer:hover {
+      background: #d97706;
+      transform: translateY(-1px);
+    }
+
+    /* A4 페이지 레이아웃 규격 (210mm x 297mm) */
+    .page-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px 0;
+      gap: 30px;
+    }
+
+    .sheet {
+      width: 210mm;
+      height: 296mm; /* 인쇄 시 1페이지당 딱 맞게 */
+      background: white;
+      padding: 13mm 14mm 10mm 14mm;
+      box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* 페이지 헤더 */
+    .header {
+      border: 3px dashed #6366f1;
+      border-radius: 18px;
+      padding: 10px 16px;
+      background: #eef2ff;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .badge {
+      font-family: 'Jua', sans-serif;
+      background: #4f46e5;
+      color: white;
+      font-size: 12px;
+      padding: 3px 9px;
+      border-radius: 12px;
+      display: inline-block;
+    }
+
+    .title-box {
+      text-align: center;
+      flex-grow: 1;
+    }
+
+    .exam-title {
+      font-family: 'Jua', sans-serif;
+      font-size: 23px;
+      color: #312e81;
+      letter-spacing: -0.5px;
+      margin-bottom: 2px;
+    }
+
+    .sub-phrase {
+      font-family: 'Gaegu', cursive;
+      font-size: 16px;
+      color: #e11d48;
+      font-weight: 700;
+    }
+
+    .student-info-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 14px;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px dashed #cbd5e1;
+      font-family: 'Jua', sans-serif;
+      font-size: 15px;
+      color: #334155;
+    }
+
+    .info-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .info-line {
+      display: inline-block;
+      width: 45px;
+      border-bottom: 1.5px solid #475569;
+      height: 16px;
+    }
+    .info-line.name {
+      width: 85px;
+    }
+    .info-line.score {
+      width: 40px;
+    }
+
+    /* 2단 다단 문제 레이아웃 */
+    .content-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 18px;
+      row-gap: 8px;
+      flex-grow: 1;
+      position: relative;
+    }
+
+    /* 가운데 구분선 */
+    .content-columns::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 1px;
+      background: repeating-linear-gradient(to bottom, #cbd5e1 0, #cbd5e1 5px, transparent 5px, transparent 10px);
+      transform: translateX(-50%);
+    }
+
+    .column {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* 문제 카드 스타일 */
+    .q-card {
+      background: #fafafa;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 8px 10px;
+      margin-bottom: 7px;
+      font-size: 12.2px;
+      line-height: 1.45;
+      transition: background 0.2s;
+    }
+
+    .q-header {
+      font-family: 'Jua', sans-serif;
+      font-size: 13.5px;
+      color: #1e293b;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: flex-start;
+      gap: 4px;
+    }
+
+    .q-num {
+      background: #6366f1;
+      color: white;
+      font-size: 11px;
+      border-radius: 6px;
+      padding: 1px 5px;
+      display: inline-block;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .q-tag {
+      font-size: 10.5px;
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-weight: normal;
+    }
+    .tag-choice { background: #dbeafe; color: #1e40af; }
+    .tag-write { background: #fef3c7; color: #92400e; }
+
+    .q-text {
+      flex-grow: 1;
+      word-break: keep-all;
+    }
+
+    .q-desc {
+      font-size: 11.5px;
+      color: #64748b;
+      margin-top: 2px;
+      word-break: keep-all;
+    }
+
+    /* 객관식 보기 */
+    .options {
+      margin-top: 5px;
+      padding-left: 2px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 11.8px;
+    }
+
+    .opt {
+      display: flex;
+      align-items: flex-start;
+      gap: 3px;
+      word-break: keep-all;
+    }
+
+    .opt-circle {
+      font-weight: bold;
+      color: #4f46e5;
+      flex-shrink: 0;
+    }
+
+    /* 주관식 답안 입력란 */
+    .answer-box {
+      margin-top: 6px;
+      background: white;
+      border: 1.5px dashed #94a3b8;
+      border-radius: 6px;
+      padding: 4px 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Jua', sans-serif;
+      font-size: 12.5px;
+      color: #334155;
+    }
+
+    .answer-input-line {
+      display: inline-block;
+      min-width: 65px;
+      border-bottom: 1.5px solid #64748b;
+      height: 16px;
+      vertical-align: middle;
+      text-align: center;
+      color: #dc2626;
+      font-family: 'Gaegu', cursive;
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .ans-reveal {
+      display: none;
+      color: #dc2626;
+      font-family: 'Jua', sans-serif;
+      font-size: 12px;
+      margin-left: 5px;
+    }
+
+    .show-answer .ans-reveal {
+      display: inline !important;
+    }
+    .show-answer .correct-opt {
+      background-color: #fef08a !important;
+      font-weight: bold;
+      border-radius: 4px;
+      padding: 0 3px;
+    }
+
+    /* 하단 푸터 */
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 6px;
+      border-top: 1.5px solid #e2e8f0;
+      font-family: 'Jua', sans-serif;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .footer-stamp {
+      font-family: 'Gaegu', cursive;
+      font-size: 15px;
+      color: #6366f1;
+      font-weight: 700;
+    }
+
+    /* 2페이지 서브 헤더 */
+    .sheet-2-header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-bottom: 2.5px dashed #6366f1;
+      padding-bottom: 7px;
+      margin-bottom: 12px;
+      background: #f8fafc;
+      border-radius: 10px;
+      padding-top: 6px;
+    }
+    .sheet-2-title {
+      font-family: 'Jua', sans-serif;
+      font-size: 19px;
+      color: #312e81;
+      letter-spacing: -0.3px;
+      text-align: center;
+    }
+
+    /* 인쇄 전용 CSS (@media print) */
+    @media print {
+      body {
+        background: transparent;
+      }
+      .toolbar {
+        display: none !important;
+      }
+      .page-container {
+        padding: 0;
+        gap: 0;
+      }
+      .sheet {
+        width: 210mm;
+        height: 296mm;
+        box-shadow: none;
+        padding: 12mm 13mm 10mm 13mm;
+        page-break-after: always;
+        break-after: page;
+      }
+      .sheet:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 상단 컨트롤 버튼 -->
+  <div class="toolbar">
+    <button class="btn btn-answer" onclick="toggleAnswer()">💡 정답 보기/숨기기</button>
+    <button class="btn btn-print" onclick="window.print()">🖨️ PDF 저장 / 인쇄</button>
+  </div>
+
+  <div class="page-container" id="quiz-root">
+
+    <!-- ================== [ 앞면 : 1페이지 (1번 ~ 10번) ] ================== -->
+    <div class="sheet">
+      <!-- 헤더 -->
+      <div class="header">
+        <div class="header-top">
+          <span class="badge">🚌 2026 수학여행</span>
+          <div class="title-box">
+            <h1 class="exam-title">모덕초 6학년 수학여행 자격 고사 (1일 차)</h1>
+            <p class="sub-phrase">※ 불합격 시 수학여행 버스 맨 앞자리에서 선생님과 손잡고 이동합니다! 👮‍♂️</p>
+          </div>
+          <span class="badge" style="background:#059669;">제 1 교시</span>
+        </div>
+        <div class="student-info-bar">
+          <div class="info-item">6학년 <span class="info-line"></span> 반</div>
+          <div class="info-item"><span class="info-line"></span> 번</div>
+          <div class="info-item">이름: <span class="info-line name"></span></div>
+          <div class="info-item">점수: <span class="info-line score"></span> / 100점</div>
+        </div>
+      </div>
+
+      <!-- 본문 2단 구성 -->
+      <div class="content-columns">
+        <!-- 1단 (1~5번) -->
+        <div class="column">
+          <!-- 1번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">01</span>
+              <span class="q-tag tag-write">주관식</span>
+              <span class="q-text">삼정타워 집결 장소(층)와 시간</span>
+            </div>
+            <div class="q-desc">1일 차 런닝맨·메이즈 체험과 점심 식사를 마치고 모둠 친구들과 다 함께 모여야 하는 <b>삼정타워 내 장소(몇 층)</b>와 <b>최종 집결 시간</b>은?</div>
+            <div class="answer-box" style="flex-wrap: wrap; gap: 4px;">
+              장소: 삼정타워 ( <span class="answer-input-line" style="min-width:45px;"></span> ) / 
+              시간: <span class="answer-input-line" style="min-width:35px;"></span> : <span class="answer-input-line" style="min-width:35px;"></span> 까지
+              <span class="ans-reveal">[정답: 1층 / 12 : 30]</span>
+            </div>
+          </div>
+
+          <!-- 2번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">02</span>
+              <span class="q-tag tag-choice">객관식</span>
+              <span class="q-text">에스컬레이터 이용 예절</span>
+            </div>
+            <div class="q-desc">삼정타워에서 층간 이동을 할 때 올바른 행동은?</div>
+            <div class="options">
+              <div class="opt"><span class="opt-circle">①</span> 시간이 없으니 뛰어서 올라간다.</div>
+              <div class="opt correct-opt"><span class="opt-circle">②</span> 손잡이를 잡고 안전선 안에 차분히 선다.</div>
+              <div class="opt"><span class="opt-circle">③</span> 역방향으로 거슬러 내려가며 장난친다.</div>
+              <div class="opt"><span class="opt-circle">④</span> 에스컬레이터에서 틱톡 댄스를 춘다.</div>
+            </div>
+          </div>
+
+          <!-- 3번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">03</span>
+              <span class="q-tag tag-write">주관식</span>
+              <span class="q-text">아르떼뮤지엄 입장 전 필수 코스</span>
+            </div>
+            <div class="q-desc">아르떼뮤지엄은 내부에 이것이 없고 재입장이 불가합니다. <b>입장 전 반드시 다녀와야 할 곳</b>은?</div>
+            <div class="answer-box">
+              답: <span class="answer-input-line" style="min-width:110px;"></span>
+              <span class="ans-reveal">[정답: 화장실]</span>
+            </div>
+          </div>
+
+          <!-- 4번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">04</span>
+              <span class="q-tag tag-choice">객관식</span>
+              <span class="q-text">전시 관람 안전 수칙</span>
+            </div>
+            <div class="q-desc">빛과 미디어아트 전시장(아르떼뮤지엄) 관람 수칙 중 <b>틀린</b> 것은?</div>
+            <div class="options">
+              <div class="opt"><span class="opt-circle">①</span> 어두운 공간이 많아 천천히 발밑을 살핀다.</div>
+              <div class="opt"><span class="opt-circle">②</span> 거울과 유리에 부딪히지 않게 조심한다.</div>
+              <div class="opt correct-opt"><span class="opt-circle">③</span> 목마르니 물병과 음료수를 마시며 본다.</div>
+              <div class="opt"><span class="opt-circle">④</span> 감전 위험이 있는 LED 조형물은 눈으로만 본다.</div>
+            </div>
+          </div>
+
+          <!-- 5번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">05</span>
+              <span class="q-tag tag-write">주관식</span>
+              <span class="q-text">비상 대피로 위치</span>
+            </div>
+            <div class="q-desc">아르떼뮤지엄에서 비상 상황 발생 시 어디에 표시된 비상대피로를 확인해야 할까요?</div>
+            <div class="answer-box">
+              답: <span class="answer-input-line" style="min-width:80px;"></span> 의 비상대피로
+              <span class="ans-reveal">[정답: 바닥]</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2단 (6~10번) -->
+        <div class="column">
+          <!-- 6번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">06</span>
+              <span class="q-tag tag-choice">객관식</span>
+              <span class="q-text">도보 이동 안전 수칙</span>
+            </div>
+            <div class="q-desc">삼정타워에서 버스 탑승 구역까지 도보 이동할 때 가장 안전한 방법은?</div>
+            <div class="options">
+              <div class="opt"><span class="opt-circle">①</span> 차가 안 올 때 무단횡단으로 건넌다.</div>
+              <div class="opt"><span class="opt-circle">②</span> 스마트폰만 보면서 친구 뒤를 따라간다.</div>
+              <div class="opt correct-opt"><span class="opt-circle">③</span> 인도와 횡단보도를 이용하며 좌우를 살핀다.</div>
+              <div class="opt"><span class="opt-circle">④</span> 도로 쪽으로 넓게 퍼져 장난치며 걷는다.</div>
+            </div>
+          </div>
+
+          <!-- 7번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">07</span>
+              <span class="q-tag tag-write">주관식</span>
+              <span class="q-text">스카이캡슐 탑승 인원</span>
+            </div>
+            <div class="q-desc">해운대 블루라인파크에서 타게 될 <b>스카이캡슐</b>의 한 대당 최대 탑승 인원은?</div>
+            <div class="answer-box">
+              답: 한 대당 최대 ( <span class="answer-input-line" style="min-width:45px;"></span> ) 명
+              <span class="ans-reveal">[정답: 4]</span>
+            </div>
+          </div>
+
+          <!-- 8번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">08</span>
+              <span class="q-tag tag-choice">객관식</span>
+              <span class="q-text">스카이캡슐 하차 정거장</span>
+            </div>
+            <div class="q-desc">미포정거장에서 스카이캡슐을 타고 출발하여 도착하게 되는 정거장은?</div>
+            <div class="options">
+              <div class="opt"><span class="opt-circle">①</span> 미포정거장</div>
+              <div class="opt correct-opt"><span class="opt-circle">②</span> 청사포정거장</div>
+              <div class="opt"><span class="opt-circle">③</span> 송정정거장</div>
+              <div class="opt"><span class="opt-circle">④</span> 모덕정거장</div>
+            </div>
+          </div>
+
+          <!-- 9번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">09</span>
+              <span class="q-tag tag-write">주관식</span>
+              <span class="q-text">다릿돌전망대 이동 중 금지 구역</span>
+            </div>
+            <div class="q-desc">청사포에서 다릿돌전망대까지 데크길로 이동할 때 <b>절대 들어가면 안 되는 곳</b>은?</div>
+            <div class="answer-box">
+              답: <span class="answer-input-line" style="min-width:110px;"></span>
+              <span class="ans-reveal">[정답: 철길 / 철로]</span>
+            </div>
+          </div>
+
+          <!-- 10번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">10</span>
+              <span class="q-tag tag-choice">객관식</span>
+              <span class="q-text">전망대 관람 주의사항</span>
+            </div>
+            <div class="q-desc">바다 위 다릿돌전망대 관람 중 하지 말아야 할 행동은?</div>
+            <div class="options">
+              <div class="opt"><span class="opt-circle">①</span> 투명 유리 바닥에서 뛰거나 구르지 않는다.</div>
+              <div class="opt"><span class="opt-circle">②</span> 무서우면 나무 데크 구간으로 걸어간다.</div>
+              <div class="opt"><span class="opt-circle">③</span> 난간 밖으로 스마트폰을 내밀지 않는다.</div>
+              <div class="opt correct-opt"><span class="opt-circle">④</span> 담력 테스트라며 친구를 밀치고 놀래킨다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1페이지 푸터 -->
+      <div class="footer">
+        <span>모덕초등학교 6학년 수학여행 자격 고사</span>
+        <span class="footer-stamp">★ 뒤로 넘겨서 11번 문제를 계속 푸세요! ★</span>
+        <span>[ 1 / 2 쪽 (앞면) ]</span>
+      </div>
+    </div>
+
+
+    <!-- ================== [ 뒷면 : 2페이지 (11번 ~ 20번) ] ================== -->
+    <div class="sheet">
+      <!-- 2페이지 헤더 -->
+      <div class="sheet-2-header">
+        <div class="sheet-2-title">🚌 모덕초 6학년 수학여행 자격 고사 (2일 차 및 안전 수칙)</div>
+      </div>
+
+      <!-- 본문 2단 구성 -->
+      <div class="content-columns">
+        <!-- 1단 (11~15번) -->
+        <div class="column">
+          <!-- 11번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">11</span>
+              <span class="q-tag tag-write">주관식</span>
+              <span class="q-text">2일 차 학교 출발 시간</span>
+            </div>
+            <div class="q-desc">스카이캡슐 일정에 늦지 않기 위해 <b>2일 차 아침 모덕초에서 버스가 출발하는 시간</b>은?</div>
+            <div class="answer-box">
+              답: 오전 ( <span class="answer-input-line" style="min-width:45px;"></span> ) 시 정각
+              <span class="ans-reveal">[정답: 8시]</span>
+            </div>
+          </div>
+
+          <!-- 12번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">12</span>
+              <span class="q-tag tag-choice">객관식</span>
+              <span class="q-text">점심 식사 예절과 주의사항</span>
+            </div>
+            <div class="q-desc">수학여행 중 식당(뷔페 등)을 이용할 때의 올바른 행동으로 알맞은 것은?</div>
+            <div class="options">
+              <div class="opt"><span class="opt-circle">①</span> 본전을 뽑기 위해 배가 터질 때까지 과식한다.</div>
+              <div class="opt correct-opt"><span class="opt-circle">②</span> 먹을 만큼만 담고 차분히 먹으며 정숙을 지킨다.</div>
+              <div class="opt"><span class="opt-circle">③</span> 인기 있는 메뉴 앞에 새치기해서 음식을 싹쓸이한다.</div>
+              <div class="opt"><span class="opt-circle">④</span> 식당 안에서 친구들과 큰 소리로 떠들며 뛰어다닌다.</div>
+            </div>
+          </div>
+
+          <!-- 13번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">13</span>
+              <span class="q-tag tag-choice">객관식</span>
+              <span class="q-text">송도케이블카 탑승 예절</span>
+            </div>
+            <div class="q-desc">바다 위를 건너는 송도해상케이블카에서 <b>절대 금지된 행동</b>은?</div>
+            <div class="options">
+              <div class="opt"><span class="opt-circle">①</span> 바깥 풍경을 바라보며 감상하기</div>
+              <div class="opt correct-opt"><span class="opt-circle">②</span> 캐빈 안에서 몸을 크게 흔들거나 뛰기</div>
+              <div class="opt"><span class="opt-circle">③</span> 정해진 탑승 정원(8명) 지키기</div>
+              <div class="opt"><span class="opt-circle">④</span> 안내요원의 신호에 따라 승하차하기</div>
+            </div>
+          </div>
+
+          <!-- 14번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">14</span>
+              <span class="q-tag tag-write">주관식</span>
+              <span class="q-text">야외 활동과 말벌 예방법</span>
+            </div>
+            <div class="q-desc">송도스카이파크 등 야외 숲길에서 말벌의 접근을 예방하기 위해 권장되는 옷 색상은?</div>
+            <div class="answer-box">
+              답: ( <span class="answer-input-line" style="min-width:65px;"></span> ) 색 계열의 옷
+              <span class="ans-reveal">[정답: 밝은색 / 흰색]</span>
+            </div>
+          </div>
+
+          <!-- 15번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">15</span>
+              <span class="q-tag tag-choice">객관식</span>
+              <span class="q-text">감천문화마을 매너</span>
+            </div>
+            <div class="q-desc">아름다운 감천문화마을에서 모둠 활동을 할 때 올바른 행동은?</div>
+            <div class="options">
+              <div class="opt"><span class="opt-circle">①</span> 각자 가고 싶은 곳으로 뿔뿔이 흩어진다.</div>
+              <div class="opt correct-opt"><span class="opt-circle">②</span> 실제 주민 마을이므로 정숙하고 쓰레기를 챙긴다.</div>
+              <div class="opt"><span class="opt-circle">③</span> 예쁜 집 마당 안으로 허락 없이 불쑥 들어간다.</div>
+              <div class="opt"><span class="opt-circle">④</span> 좁은 골목 계단에서 달리기 시합을 한다.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2단 (16~20번) -->
+        <div class="column">
+          <!-- 16번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">16</span>
+              <span class="q-tag tag-write">주관식</span>
+              <span class="q-text">감천문화마을 집합 장소</span>
+            </div>
+            <div class="q-desc">모둠 활동을 마친 후(16:50) 약속된 시간에 전원 모여야 하는 <b>대표 벽화의 이름</b>은?</div>
+            <div class="answer-box">
+              답: ( <span class="answer-input-line" style="min-width:80px;"></span> ) 벽화 앞
+              <span class="ans-reveal">[정답: 물고기]</span>
+            </div>
+          </div>
+
+          <!-- 17번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">17</span>
+              <span class="q-tag tag-choice">객관식</span>
+              <span class="q-text">모둠 갈등 해결 방법</span>
+            </div>
+            <div class="q-desc">수학여행 중 모둠 친구와 일정 의견이 맞지 않을 때 가장 지혜로운 태도는?</div>
+            <div class="options">
+              <div class="opt"><span class="opt-circle">①</span> 목소리 큰 사람 뜻대로 무조건 우긴다.</div>
+              <div class="opt"><span class="opt-circle">②</span> 친구를 버리고 혼자 다른 모둠으로 간다.</div>
+              <div class="opt correct-opt"><span class="opt-circle">③</span> 양보·조율하고 어려우면 선생님께 도움을 청한다.</div>
+              <div class="opt"><span class="opt-circle">④</span> 단톡방에서 해당 친구를 빼고 험담한다.</div>
+            </div>
+          </div>
+
+          <!-- 18번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">18</span>
+              <span class="q-tag tag-choice">객관식</span>
+              <span class="q-text">버스 탑승 안전 수칙</span>
+            </div>
+            <div class="q-desc">수학여행 이동 버스 안에서 지켜야 할 가장 중요한 수칙은?</div>
+            <div class="options">
+              <div class="opt"><span class="opt-circle">①</span> 출발하면 벨트를 풀고 자리를 바꾼다.</div>
+              <div class="opt correct-opt"><span class="opt-circle">②</span> 하차 신호 전까지 안전벨트를 계속 맨다.</div>
+              <div class="opt"><span class="opt-circle">③</span> 통로에 가방을 쌓아 친구들을 막는다.</div>
+              <div class="opt"><span class="opt-circle">④</span> 창밖으로 손을 내밀고 소리를 지른다.</div>
+            </div>
+          </div>
+
+          <!-- 19번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">19</span>
+              <span class="q-tag tag-write">주관식</span>
+              <span class="q-text">비상 응급 연락</span>
+            </div>
+            <div class="q-desc">길을 잃었거나 몸이 아픈 응급 상황이 생겼을 때 <b>가장 먼저 연락해야 할 분</b>은?</div>
+            <div class="answer-box">
+              답: <span class="answer-input-line" style="min-width:110px;"></span>
+              <span class="ans-reveal">[정답: 담임선생님]</span>
+            </div>
+          </div>
+
+          <!-- 20번 -->
+          <div class="q-card">
+            <div class="q-header">
+              <span class="q-num">20</span>
+              <span class="q-tag tag-choice">객관식</span>
+              <span class="q-text">수학여행의 약속</span>
+            </div>
+            <div class="q-desc">평생 기억에 남을 행복한 모덕초 수학여행을 만들기 위한 올바른 마음가짐은?</div>
+            <div class="options">
+              <div class="opt"><span class="opt-circle">①</span> 나 혼자만 신나고 즐거우면 그만이다.</div>
+              <div class="opt"><span class="opt-circle">②</span> 선생님 몰래 일탈하는 것이 최고다.</div>
+              <div class="opt correct-opt"><span class="opt-circle">③</span> 배려와 안전 약속을 지키며 함께 참여한다.</div>
+              <div class="opt"><span class="opt-circle">④</span> 비싼 기념품을 제일 많이 사는 것이다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2페이지 푸터 -->
+      <div class="footer">
+        <span>모덕초등학교 6학년 수학여행 자격 고사</span>
+        <span class="footer-stamp">🎉 안전하고 즐거운 수학여행 다녀오겠습니다! 🎓</span>
+        <span>[ 2 / 2 쪽 (뒷면) ]</span>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // 정답 보기 / 숨기기 토글 기능
+    function toggleAnswer() {
+      const root = document.getElementById('quiz-root');
+      root.classList.toggle('show-answer');
+    }
+  </script>
+</body>
+</html>
