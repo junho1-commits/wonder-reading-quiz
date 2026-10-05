@@ -1290,6 +1290,7 @@
 
     /* ================= MQTT 클라우드 통신 엔진 ================= */
     const SAVE_KEY = 'wonder_teacher_session';
+    const DEFAULT_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxBEGelxP1SGq0qE2qQkXZpMpUskOts-R_tnuXLiqPM4le0gcDkQeGSKb3CyDG-l36n/exec';
     const SHEET_URL_KEY = 'wonder_sheet_url';
 
     function loadSavedSession() {
@@ -1602,7 +1603,11 @@
     let sheetLastTime = '';
 
     function getSheetUrl() {
-      try { return localStorage.getItem(SHEET_URL_KEY) || ''; } catch (e) { return ''; }
+      try {
+        const stored = localStorage.getItem(SHEET_URL_KEY);
+        if (stored) return stored;
+      } catch (e) {}
+      return DEFAULT_SHEET_URL;
     }
 
     function scheduleSheetSync() {
@@ -1674,10 +1679,16 @@
         alert('Apps Script 웹앱 주소(https://script.google.com/.../exec)를 붙여넣어 주세요.');
         return;
       }
-      try { localStorage.setItem(SHEET_URL_KEY, url); } catch (e) {}
+      try {
+        if (url) {
+          localStorage.setItem(SHEET_URL_KEY, url);
+        } else {
+          localStorage.removeItem(SHEET_URL_KEY);
+        }
+      } catch (e) {}
       closeSheetSettings();
       updateSheetStatusBadge();
-      if (url) syncToSheet(); // 저장 즉시 현재 명단 전송
+      if (getSheetUrl()) syncToSheet(); // 저장 즉시 현재 명단 전송
     }
 
     async function testSheetUrl() {
