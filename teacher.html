@@ -9,6 +9,7 @@
   <!-- 클라우드 실시간 동기화 MQTT & 브라우저 QR 라이브러리 -->
   <script src="https://unpkg.com/mqtt@5.3.5/dist/mqtt.min.js"></script>
   <script src="questions.js"></script>
+  <script src="quiz-utils.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <style>
     :root {
@@ -143,6 +144,22 @@
       display: flex;
       align-items: center;
       gap: 12px;
+    }
+
+    .brand { min-width: 0; }
+    #brandTitleText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .brand-badge, .room-badge, .header-center, .header-right { white-space: nowrap; flex-shrink: 0; }
+    @media (max-width: 1600px) {
+      header { padding: 0 20px; gap: 14px; }
+      .brand, .brand-title { gap: 10px; }
+      .brand-title { font-size: 20px; min-width: 0; }
+      .brand-badge { display: none; }
+      .room-badge { font-size: 22px; padding: 4px 10px; }
+      .header-center, .header-right { gap: 10px; }
+      .stage-badge { font-size: 17px; padding: 6px 12px; }
+      .q-number-badge { font-size: 24px; }
+      .submit-counter-badge { font-size: 18px; padding: 6px 12px; }
+      .icon-btn { font-size: 16px; padding: 8px 10px; }
     }
 
     .more-menu { position: relative; }
@@ -479,6 +496,9 @@
     }
 
     .question-card {
+      flex-shrink: 0;
+      max-height: 43vh;
+      overflow-y: auto;
       background: var(--bg-card);
       border: 2px solid var(--border-color);
       border-radius: 20px;
@@ -487,6 +507,7 @@
     }
 
     .question-title {
+      white-space: pre-line;
       font-size: clamp(26px, min(3.2vw, 5vh), 60px);
       font-weight: 900;
       line-height: 1.4;
@@ -520,6 +541,23 @@
       gap: 20px;
       min-height: 0;
     }
+
+    .short-answer-panel {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 20px;
+      border: 2px dashed var(--accent-blue);
+      border-radius: 18px;
+      text-align: center;
+      font-size: clamp(22px, 2.5vw, 40px);
+      color: var(--accent-blue);
+    }
+    .short-answer-panel strong { color: var(--accent-yellow); overflow-wrap: anywhere; }
 
     .option-card {
       border-radius: 18px;
@@ -624,6 +662,9 @@
 
     .explanation-drawer.show {
       display: block;
+      flex-shrink: 0;
+      max-height: 22vh;
+      overflow-y: auto;
     }
 
     .explanation-header {
@@ -1088,9 +1129,15 @@
         </div>
       </div>
 
+      <div class="short-answer-panel" id="shortAnswerPanel" style="display: none;">
+        <div id="shortAnswerPrompt">✍️ 학생 화면에서 답을 직접 입력하세요.</div>
+        <strong id="shortAnswerResult" style="display: none;"></strong>
+        <div style="font-size: 18px;">띄어쓰기가 달라도 정답으로 인정합니다.</div>
+      </div>
+
       <div class="explanation-drawer" id="explanationDrawer">
         <div class="explanation-header">
-          <span>📖 《원더》 책 속 이야기 & 해설</span>
+          <span>📖 정답과 해설</span>
         </div>
         <div class="explanation-content" id="explanationText">해설 내용</div>
       </div>
@@ -1321,7 +1368,7 @@
     let questions = [];
 
     let gameState = {
-      setId: 'wonder', // 선택된 퀴즈 세트
+      setId: 'reading30', // 선택된 퀴즈 세트
       status: 'lobby', // lobby, question, answer, finished
       locked: false, // true면 새 학생 입장 차단 (기존 학생 재접속은 허용)
       nameConflicts: {}, // key -> 새로 들어오려던 이름 (교사 확인 대기)
@@ -1539,8 +1586,16 @@
       if (gameState.students[info.key].name !== info.name) return; // 이름 충돌 중인 기기의 제출은 무시
       if (gameState.currentAnswers[info.key] !== undefined) return; // 첫 제출만 인정 (재접속 후 답 바꾸기 방지)
 
-      const choice = parseInt(data.choice, 10);
-      if (!(choice >= 1 && choice <= 4)) return;
+      const q = questions[gameState.currentQIndex];
+      let choice;
+      if (QuizUtils.isShortAnswer(q)) {
+        if (typeof data.choice !== 'string' || data.choice.length > 200) return;
+        choice = data.choice.trim();
+        if (!QuizUtils.normalizeAnswer(choice)) return;
+      } else {
+        choice = data.choice;
+        if (!Number.isInteger(choice) || choice < 1 || choice > q.options.length) return;
+      }
       gameState.currentAnswers[info.key] = choice;
 
       // 집계 업데이트
@@ -1563,7 +1618,8 @@
         name: st.name,
         score: st.score,
         qIndex: gameState.currentQIndex,
-        choice: gameState.currentAnswers[key] ?? null
+        choice: gameState.currentAnswers[key] ?? null,
+        isCorrect: st.answers[gameState.currentQIndex]?.isCorrect ?? null
       }), { qos: 1, retain: true });
     }
 
@@ -1585,8 +1641,12 @@
           id: currentQ.id,
           stage: currentQ.stage,
           question: currentQ.question,
+          type: currentQ.type || 'choice',
           options: currentQ.options,
           answer: (gameState.status === 'answer') ? currentQ.answer : null,
+          acceptedAnswers: (gameState.status === 'answer') ? currentQ.acceptedAnswers : undefined,
+          answerGroups: (gameState.status === 'answer') ? currentQ.answerGroups : undefined,
+          ordered: currentQ.ordered,
           hint: currentQ.hint,
           explanation: (gameState.status === 'answer') ? currentQ.explanation : null,
           totalQuestions: questions.length
@@ -1924,6 +1984,9 @@
         document.getElementById('submitCount').innerText = submittedCount;
         document.getElementById('totalStudentsCount').innerText = studentCount;
         document.getElementById('questionText').innerText = q.question;
+        document.getElementById('questionText').style.fontSize = state.status === 'answer' && q.question.length > 120
+          ? 'clamp(22px, min(2.3vw, 3vh), 38px)'
+          : q.question.length > 180 ? 'clamp(22px, min(2.3vw, 3.5vh), 40px)' : '';
 
         // 힌트
         const hintBox = document.getElementById('hintBox');
@@ -1934,7 +1997,22 @@
           hintBox.classList.remove('show');
         }
 
-        // 보기 4개
+        const isShort = QuizUtils.isShortAnswer(q);
+        document.getElementById('optionsGrid').style.display = isShort ? 'none' : 'grid';
+        document.getElementById('optionsGrid').style.gridTemplateRows = q.options.length <= 2 ? '1fr' : '1fr 1fr';
+        document.getElementById('shortAnswerPanel').style.display = isShort ? 'flex' : 'none';
+        const shortResult = document.getElementById('shortAnswerResult');
+        shortResult.style.display = isShort && state.status === 'answer' ? 'block' : 'none';
+        if (isShort) {
+          document.getElementById('shortAnswerPrompt').innerText = state.status === 'answer'
+            ? '✅ 정답' : '✍️ 학생 화면에서 답을 직접 입력하세요.';
+          shortResult.innerText = state.status === 'answer' ? q.answer : '';
+        }
+        for (let i = 1; i <= 4; i++) {
+          document.getElementById(`optCard${i}`).style.display = !isShort && i <= q.options.length ? 'flex' : 'none';
+        }
+
+        // 객관식 및 OX 보기
         q.options.forEach((opt, idx) => {
           const num = idx + 1;
           document.getElementById(`optText${num}`).innerText = opt;
@@ -1967,7 +2045,7 @@
         const expDrawer = document.getElementById('explanationDrawer');
         if (state.status === 'answer') {
           expDrawer.classList.add('show');
-          document.getElementById('explanationText').innerText = q.explanation;
+          document.getElementById('explanationText').innerText = `정답: ${QuizUtils.answerLabel(q)}\n${q.explanation}`;
           document.getElementById('btnReveal').style.display = 'none';
           document.getElementById('btnNext').style.display = 'flex';
           if (prevStatus === 'question') playCorrectFanfare();
@@ -2139,11 +2217,11 @@
       gameState.timerRemaining = gameState.timerTotal; // 문제를 풀고 나면 타이머는 항상 처음 시간으로 리셋
 
       // 1문제당 1점 채점 & 문제별 정오답 기록
-      const correct = questions[gameState.currentQIndex].answer;
+      const currentQuestion = questions[gameState.currentQIndex];
       Object.entries(gameState.currentAnswers).forEach(([studentKey, choice]) => {
         const st = gameState.students[studentKey];
         if (st) {
-          const isCorrect = (choice === correct);
+          const isCorrect = QuizUtils.isCorrectAnswer(currentQuestion, choice);
           // 문제별 결과 저장
           st.answers[gameState.currentQIndex] = {
             choice: choice,

@@ -12,6 +12,7 @@ import json
 import time
 import socket
 import threading
+import unicodedata
 from urllib.parse import urlparse, parse_qs
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import qrcode
@@ -31,6 +32,46 @@ QUESTIONS_FILE = os.path.join(BASE_DIR, "questions.json")
 # 문제 로드
 with open(QUESTIONS_FILE, "r", encoding="utf-8") as f:
     QUESTIONS = json.load(f)
+
+def normalize_answer(value):
+    text = unicodedata.normalize("NFKC", str(value)).lower()
+    stripped = "".join(c for c in text if not c.isspace()
+                   and c not in "\u200b\u200c\u200d\ufeff"
+                   and not unicodedata.category(c).startswith("P"))
+    return unicodedata.normalize("NFKC", stripped)
+
+def matches_answer_groups(text, groups, ordered=True):
+    if not groups:
+        return text == ""
+    indices = [0] if ordered else range(len(groups))
+    for i in indices:
+        for alias in groups[i]:
+            word = normalize_answer(alias)
+            if not word or not text.startswith(word):
+                continue
+            rest = text[len(word):]
+            remaining = groups[:i] + groups[i + 1:]
+            if not remaining:
+                if not rest:
+                    return True
+                continue
+            for separator in ("", "와", "과", "및", "그리고", "하고"):
+                if rest.startswith(separator) and matches_answer_groups(rest[len(separator):], remaining, ordered):
+                    return True
+    return False
+
+def is_correct_answer(question, choice):
+    if question.get("type") != "short":
+        return type(choice) is int and choice == question["answer"]
+    if not isinstance(choice, str):
+        return False
+    text = normalize_answer(choice)
+    if not text:
+        return False
+    if any(text == normalize_answer(a) for a in [question["answer"]] + question.get("acceptedAnswers", [])):
+        return True
+    return bool(question.get("answerGroups")) and matches_answer_groups(
+        text, question["answerGroups"], question.get("ordered", True))
 
 def get_local_ip():
     """교실 내부망 로컬 IP 자동 탐색"""
@@ -77,13 +118,13 @@ class GameEngine:
     def _reveal_answer_locked(self):
         self.status = "answer"
         self.timer_active = False
-        correct_answer = QUESTIONS[self.current_q_index]["answer"]
+        current_question = QUESTIONS[self.current_q_index]
         
         # 채점 및 점수 계산 (빠르게 맞힐수록 보너스 점수)
         for s_id, choice in self.current_answers.items():
             if s_id in self.students:
                 s = self.students[s_id]
-                is_correct = (choice == correct_answer)
+                is_correct = is_correct_answer(current_question, choice)
                 s["answers"][self.current_q_index] = {
                     "choice": choice,
                     "correct": is_correct
@@ -122,6 +163,15 @@ class GameEngine:
                 return False, "문제 번호가 일치하지 않습니다."
             if student_id not in self.students:
                 return False, "등록되지 않은 학생입니다."
+            if student_id in self.current_answers:
+                return False, "이미 답안을 제출했습니다."
+            question = QUESTIONS[self.current_q_index]
+            if question.get("type") == "short":
+                if not isinstance(choice, str) or len(choice) > 200 or not normalize_answer(choice):
+                    return False, "답안을 바르게 입력해 주세요."
+                choice = choice.strip()
+            elif type(choice) is not int or not 1 <= choice <= len(question["options"]):
+                return False, "보기를 바르게 선택해 주세요."
 
             self.current_answers[student_id] = choice
             elapsed = time.time() - self.start_question_time
@@ -221,8 +271,12 @@ class GameEngine:
                     "id": q["id"],
                     "stage": q["stage"],
                     "question": q["question"],
+                    "type": q.get("type", "choice"),
                     "options": q["options"],
                     "answer": q["answer"] if self.status in ["answer", "finished"] else None,
+                    "acceptedAnswers": q.get("acceptedAnswers", []) if self.status in ["answer", "finished"] else [],
+                    "answerGroups": q.get("answerGroups", []) if self.status in ["answer", "finished"] else [],
+                    "ordered": q.get("ordered", True),
                     "hint": q["hint"],
                     "explanation": q["explanation"] if self.status in ["answer", "finished"] else None,
                     "totalQuestions": len(QUESTIONS)
@@ -265,6 +319,7 @@ class GameEngine:
                     "id": q["id"],
                     "stage": q["stage"],
                     "question": q["question"],
+                    "type": q.get("type", "choice"),
                     "options": q["options"],
                     "timeLimit": self.timer_total
                 }
@@ -285,6 +340,7 @@ class GameEngine:
                 "question": q_data,
                 "myChoice": my_choice,
                 "correctAnswer": correct_answer,
+                "isCorrect": student["answers"].get(self.current_q_index, {}).get("correct"),
                 "timerRemaining": self.timer_remaining
             }
 

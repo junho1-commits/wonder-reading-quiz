@@ -8,6 +8,7 @@
   <link href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet">
   <!-- 클라우드 실시간 동기화 MQTT 라이브러리 -->
   <script src="https://unpkg.com/mqtt@5.3.5/dist/mqtt.min.js"></script>
+  <script src="quiz-utils.js"></script>
   <style>
     :root {
       --bg-main: #0f172a;
@@ -250,6 +251,7 @@
     }
 
     .quiz-prompt-text {
+      white-space: pre-line;
       font-size: 18px;
       font-weight: 800;
       line-height: 1.4;
@@ -275,6 +277,15 @@
       grid-template-rows: 1fr 1fr;
       gap: 12px;
     }
+
+    .short-answer-form { display: flex; flex-direction: column; gap: 14px; }
+    .short-answer-form label { font-size: 18px; font-weight: 800; }
+    .short-answer-form input {
+      width: 100%; padding: 18px; border: 2px solid var(--accent-blue, #38bdf8);
+      border-radius: 14px; background: var(--bg-card); color: #fff; font-size: 22px;
+    }
+    .short-answer-help { color: var(--text-muted); font-size: 15px; line-height: 1.5; }
+    .short-answer-form button:disabled { opacity: .6; cursor: default; }
 
     .option-btn {
       border-radius: 16px;
@@ -429,7 +440,14 @@
         ✅ 답안 제출 완료! 선생님이 정답을 공개할 때까지 전자칠판을 보세요. ⏳
       </div>
 
-      <div class="btn-options-grid">
+      <form class="short-answer-form" id="shortAnswerForm" style="display: none;" onsubmit="event.preventDefault(); submitShortAnswer();">
+        <label for="shortAnswerInput">✍️ 정답을 입력하세요</label>
+        <input id="shortAnswerInput" type="text" maxlength="200" autocomplete="off" enterkeyhint="send" placeholder="정답 입력">
+        <div class="short-answer-help">띄어쓰기가 달라도 정답으로 인정해요. 여러 낱말은 쉼표로 구분하세요.</div>
+        <button type="submit" class="join-btn" id="shortAnswerSubmit">답안 제출</button>
+      </form>
+
+      <div class="btn-options-grid" id="studentOptionsGrid">
         <button class="option-btn btn-c1" id="btnOpt1" onclick="submitChoice(1)">
           <div class="btn-badge-num">1</div>
           <div class="btn-text" id="btnText1">보기 1</div>
@@ -613,6 +631,9 @@
       for (let i = 1; i <= 4; i++) {
         document.getElementById(`btnOpt${i}`).classList.toggle('selected', i === choice);
       }
+      if (typeof choice === 'string') document.getElementById('shortAnswerInput').value = choice;
+      document.getElementById('shortAnswerInput').disabled = true;
+      document.getElementById('shortAnswerSubmit').disabled = true;
       document.getElementById('submittedNotice').style.display = 'block';
     }
 
@@ -637,6 +658,7 @@
         if (currentQIdx !== state.currentQIndex) {
           currentQIdx = state.currentQIndex;
           myChoice = null;
+          document.getElementById('shortAnswerInput').value = '';
           document.getElementById('submittedNotice').style.display = 'none';
           for (let i = 1; i <= 4; i++) {
             document.getElementById(`btnOpt${i}`).classList.remove('selected');
@@ -652,12 +674,25 @@
         state.question.options.forEach((opt, idx) => {
           document.getElementById(`btnText${idx + 1}`).innerText = opt;
         });
+        const isShort = QuizUtils.isShortAnswer(state.question);
+        document.getElementById('shortAnswerForm').style.display = isShort ? 'flex' : 'none';
+        const optionsGrid = document.getElementById('studentOptionsGrid');
+        optionsGrid.style.display = isShort ? 'none' : 'grid';
+        optionsGrid.style.gridTemplateRows = state.question.options.length <= 2 ? '1fr' : '1fr 1fr';
+        const submitted = myChoice !== null;
+        document.getElementById('shortAnswerInput').disabled = submitted;
+        document.getElementById('shortAnswerSubmit').disabled = submitted;
+        for (let i = 1; i <= 4; i++) {
+          const button = document.getElementById(`btnOpt${i}`);
+          button.style.display = !isShort && i <= state.question.options.length ? 'flex' : 'none';
+          button.disabled = submitted;
+        }
 
       } else if (state.status === 'answer') {
         showView('resultView');
         if (currentQIdx !== state.currentQIndex) { currentQIdx = state.currentQIndex; myChoice = null; }
         applyServerChoice();
-        const isCorrect = (myChoice === state.question.answer);
+        const isCorrect = QuizUtils.isCorrectAnswer(state.question, myChoice);
         const icon = document.getElementById('resultIcon');
         const title = document.getElementById('resultTitle');
         const sub = document.getElementById('resultSub');
@@ -666,14 +701,12 @@
           icon.innerText = '🎉';
           title.innerText = '정답입니다!';
           title.style.color = '#4ade80';
-          sub.innerText = '멋져요! +1점을 획득했습니다. (+1점)';
+          sub.innerText = `멋져요! +1점을 획득했습니다.\n정답: ${QuizUtils.answerLabel(state.question)}`;
         } else {
           icon.innerText = '😢';
           title.innerText = '아쉬워요!';
           title.style.color = '#f87171';
-          sub.innerText = (myChoice === null)
-            ? `답을 내지 못했어요. 정답은 [${state.question.answer}번]이었습니다.`
-            : `정답은 [${state.question.answer}번]이었습니다.`;
+          sub.innerText = `${myChoice === null ? '답을 내지 못했어요. ' : ''}정답: ${QuizUtils.answerLabel(state.question)}`;
         }
 
       } else if (state.status === 'finished') {
@@ -687,6 +720,11 @@
 
     function submitChoice(choice) {
       if (myChoice !== null || blockReason) return;
+      if (!lastState || lastState.status !== 'question' || lastState.currentQIndex !== currentQIdx) return;
+      const q = lastState.question;
+      if (QuizUtils.isShortAnswer(q)) {
+        if (typeof choice !== 'string' || choice.length > 200 || !QuizUtils.normalizeAnswer(choice)) return;
+      } else if (!Number.isInteger(choice) || choice < 1 || choice > q.options.length) return;
       if (!mqttClient || !mqttClient.connected) {
         alert('연결이 끊어져 있어요. 연결되면 다시 눌러 주세요!');
         return;
@@ -694,14 +732,21 @@
       myChoice = choice;
       triggerHaptic();
 
-      document.getElementById(`btnOpt${choice}`).classList.add('selected');
-      document.getElementById('submittedNotice').style.display = 'block';
+      markChoice(choice);
+      for (let i = 1; i <= 4; i++) document.getElementById(`btnOpt${i}`).disabled = true;
 
       mqttClient.publish(`wonder/${roomCode}/submit`, JSON.stringify({
         ...studentInfo,
         qIndex: currentQIdx,
         choice: choice
       }), { qos: 1 });
+    }
+
+    function submitShortAnswer() {
+      const input = document.getElementById('shortAnswerInput');
+      const answer = input.value.trim();
+      if (!QuizUtils.normalizeAnswer(answer)) { input.focus(); return; }
+      submitChoice(answer);
     }
 
     function showView(viewId) {
