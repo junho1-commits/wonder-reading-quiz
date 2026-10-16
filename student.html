@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>독서 골든벨 - 학생용</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet">
@@ -38,8 +38,9 @@
     body {
       background-color: var(--bg-main);
       color: var(--text-main);
-      width: 100vw;
+      width: 100%;
       height: 100vh;
+      height: 100dvh;
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -57,6 +58,8 @@
     }
 
     .header-user {
+      min-width: 0;
+      flex-wrap: wrap;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -66,6 +69,7 @@
     }
 
     .header-score-badge {
+      flex-shrink: 0;
       background: #1e293b;
       border: 1px solid #475569;
       color: var(--accent-yellow);
@@ -79,9 +83,10 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      height: calc(100vh - 60px);
+      min-height: 0;
       position: relative;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
     }
 
     /* 1. 입장 화면 */
@@ -213,13 +218,16 @@
     /* 3. 퀴즈 화면 */
     .quiz-container {
       flex: 1;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       padding: 14px;
+      padding-bottom: max(14px, env(safe-area-inset-bottom));
       gap: 12px;
     }
 
     .quiz-top-info {
+      flex-shrink: 0;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -230,35 +238,38 @@
     }
 
     .quiz-q-num {
-      font-size: 18px;
+      font-size: clamp(20px, 2.5vw, 28px);
       font-weight: 900;
       color: var(--accent-yellow);
     }
 
     .quiz-timer {
-      font-size: 18px;
+      font-size: clamp(20px, 2.5vw, 28px);
       font-weight: 900;
       color: #ffffff;
     }
 
     .quiz-prompt-card {
+      flex-shrink: 0;
       background: #1e293b;
       border: 1px solid var(--border-color);
       border-radius: 14px;
       padding: 14px 18px;
-      max-height: 25vh;
+      max-height: 32vh;
+      max-height: 32dvh;
       overflow-y: auto;
     }
 
     .quiz-prompt-text {
       white-space: pre-line;
-      font-size: 18px;
+      font-size: clamp(22px, 2.8vw, 34px);
       font-weight: 800;
       line-height: 1.4;
       color: #ffffff;
     }
 
     .submitted-bar {
+      flex-shrink: 0;
       background: rgba(56, 189, 248, 0.15);
       border: 1px solid #38bdf8;
       border-radius: 12px;
@@ -271,29 +282,34 @@
     }
 
     .btn-options-grid {
-      flex: 1;
+      flex: 1 0 auto;
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      grid-template-rows: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(min-content, 1fr));
+      min-height: 240px;
       gap: 12px;
     }
+    .btn-options-grid.is-ox { grid-template-rows: minmax(min-content, 1fr); min-height: 120px; }
 
-    .short-answer-form { display: flex; flex-direction: column; gap: 14px; }
-    .short-answer-form label { font-size: 18px; font-weight: 800; }
+    .short-answer-form { display: flex; flex-direction: column; flex-shrink: 0; gap: 14px; }
+    .short-answer-form label { font-size: clamp(22px, 2.8vw, 30px); font-weight: 800; }
     .short-answer-form input {
       width: 100%; padding: 18px; border: 2px solid var(--accent-blue, #38bdf8);
-      border-radius: 14px; background: var(--bg-card); color: #fff; font-size: 22px;
+      border-radius: 14px; background: var(--bg-card); color: #fff; font-size: clamp(26px, 3.4vw, 36px);
     }
     .short-answer-help { color: var(--text-muted); font-size: 15px; line-height: 1.5; }
     .short-answer-form button:disabled { opacity: .6; cursor: default; }
 
     .option-btn {
+      min-width: 0;
+      min-height: 110px;
       border-radius: 16px;
       border: 3px solid transparent;
-      padding: 14px;
+      padding: clamp(12px, 2vw, 24px);
       display: flex;
-      flex-direction: column;
-      justify-content: space-between;
+      align-items: center;
+      gap: clamp(10px, 1.6vw, 20px);
+      justify-content: flex-start;
       text-align: left;
       cursor: pointer;
       position: relative;
@@ -307,16 +323,16 @@
     .option-btn.btn-c4 { background: rgba(16, 185, 129, 0.2); border-color: var(--c4); }
 
     .btn-badge-num {
-      width: 36px;
-      height: 36px;
+      width: clamp(40px, 5vw, 64px);
+      height: clamp(40px, 5vw, 64px);
+      flex-shrink: 0;
       border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
+      font-size: clamp(24px, 3.3vw, 38px);
       font-weight: 900;
       color: #ffffff;
-      margin-bottom: 6px;
     }
 
     .btn-c1 .btn-badge-num { background: var(--c1); }
@@ -325,14 +341,14 @@
     .btn-c4 .btn-badge-num { background: var(--c4); }
 
     .btn-text {
-      font-size: 16px;
+      flex: 1;
+      min-width: 0;
+      font-size: clamp(26px, 4vw, 44px);
       font-weight: 800;
       color: #ffffff;
-      line-height: 1.35;
-      overflow: hidden;
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+      word-break: keep-all;
     }
 
     .option-btn.selected {
@@ -351,6 +367,13 @@
       font-weight: 900;
       padding: 2px 6px;
       border-radius: 6px;
+    }
+
+    @media (max-width: 599px) {
+      .btn-options-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(4, minmax(min-content, 1fr)); }
+      .btn-options-grid.is-ox { grid-template-rows: repeat(2, minmax(min-content, 1fr)); }
+      .option-btn { min-height: 88px; }
+      .quiz-container { padding: 10px; gap: 10px; }
     }
 
     /* 4. 결과 피드백 화면 */
@@ -678,7 +701,7 @@
         document.getElementById('shortAnswerForm').style.display = isShort ? 'flex' : 'none';
         const optionsGrid = document.getElementById('studentOptionsGrid');
         optionsGrid.style.display = isShort ? 'none' : 'grid';
-        optionsGrid.style.gridTemplateRows = state.question.options.length <= 2 ? '1fr' : '1fr 1fr';
+        optionsGrid.classList.toggle('is-ox', state.question.options.length <= 2);
         const submitted = myChoice !== null;
         document.getElementById('shortAnswerInput').disabled = submitted;
         document.getElementById('shortAnswerSubmit').disabled = submitted;
